@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">KnowHow</string>
+    <string name="days">дней</string>
+    <string name="select_date">Выберите дату</string>
+    <string name="ok">OK</string>
+    <string name="cancel">Отмена</string>
+    <string name="open_menu">Меню</string>
+    <string name="about">О приложении</string>
+    <string name="home">Главная</string>
+    <string name="settings">Настройки</string>
+    <string name="app_theme">Тема приложения</string>
+    <string name="light_theme">Светлая тема</string>
+    <string name="dark_theme">Темная тема</string>
+    <string name="back">Назад</string>
+    <string name="notifications">Уведомления</string>
+    <string name="backgroung_select">Выбрать фон</string>
+    <string name="background_dimming">Уровень затемнения фона</string>
+    <string name="tg">Telegram</string>
+    <string name="vk">VK</string>
+    <string name="email">Email</string>
+    <string name="version">Версия</string>
+    <string name="github">GitHub</string>
+    <string name="rustore">RuStore</string>
+    <string name="play_market">Google Play</string>
+    <string name="version_code">1.0.1-release</string>
+    <string name="tg_link">https://t.me/AlfaGroupInfo</string>
+    <string name="vk_link">https://vk.com/alfagroupinfo</string>
+    <string name="email_link">alfred.bogdanov@gmail.com</string>
+    <string name="github_link">https://github.com/AlfaDevPrograms</string>
+    <string name="rustore_link">https://www.rustore.ru/catalog/developer/a7948657</string>
+    <string name="play_market_link">https://play.google.com/store/apps/developer?id=AlfaGroup&amp;hl=ru</string>
+    <string name="edit_photo">Фото изменено</string>
+    <string name="delete_photo">Фото удалено</string>
+    <string name="on_notification">Уведомления включены</string>
+    <string name="off_notification">Уведомления отключены</string>
+    <string name="play_market_star">Оценить приложение</string>
+    <string name="share">Поделиться приложением</string>
+    <string name="app_description">Платформа для быстрой накрутки знаний, поиска профессиональных репетиторов и подбора индивидуальных занятий. Просматривайте профили, расписание и бронируйте уроки в пару кликов.</string>
+
+    <string name="select_category">Выберите категорию</string>
+    <string name="theme">Тема</string>
+    <string name="theme_light">Светлая</string>
+    <string name="theme_dark">Темная</string>
+    <string name="theme_system">Системная</string>
+    <string name="onboarding_title_1">Добро пожаловать в KnowHow</string>
+    <string name="onboarding_body_1">Найдите своего идеального репетитора по любому предмету быстро и удобно!</string>
+    <string name="download_app">Скачать приложение</string>
+    <string name="share_link">Поделиться ссылкой</string>
+    <string name="error_open_link">Не удалось открыть ссылку</string>
+
+    <!-- Авторизация -->
+    <string name="auth_title_login">Вход в аккаунт</string>
+    <string name="auth_title_register">Регистрация</string>
+    <string name="login_button">Войти</string>
+    <string name="register_button">Зарегистрироваться</string>
+    <string name="login_or_email_label">Логин или Email</string>
+    <string name="login_label">Логин</string>
+    <string name="email_label">Email</string>
+    <string name="password_label">Пароль</string>
+    <string name="first_name_label">Имя</string>
+    <string name="last_name_label">Фамилия</string>
+    <string name="remember_me">Запомнить на 30 дней</string>
+    <string name="no_account_prompt">Еще нет аккаунта? Зарегистрироваться</string>
+    <string name="already_have_account">Уже есть аккаунт? Войти</string>
+
+    <!-- Навигация -->
+    <string name="nav_home">Главная</string>
+    <string name="nav_catalog">Поиск</string>
+    <string name="nav_lessons">Занятия</string>
+    <string name="nav_profile">Профиль</string>
+    <string name="nav_services">Услуги</string>
+    <string name="nav_schedule">Расписание</string>
+
+    <!-- Главный экран -->
+    <string name="city_label">Город: Абакан</string>
+    <string name="search_tutors_placeholder">Поиск предметов, экзаменов, репетиторов...</string>
+    <string name="popular_subjects">Популярные предметы</string>
+    <string name="all_experts">Все эксперты</string>
+    <string name="contact_tutor">Связаться</string>
+    <string name="book_now">Забронировать</string>
+    <string name="hourly_rate">Ставка/час</string>
+    <string name="experience_years">Опыт</string>
+    <string name="years_suffix">лет</string>
+
+    <!-- Каталог предметов -->
+    <string name="catalog_title">Каталог предметов</string>
+    <string name="catalog_subtitle">Выберите предмет и найдите подходящего репетитора</string>
+    <string name="search_catalog_placeholder">Поиск предметов, экзаменов или курсов...</string>
+    <string name="popular_categories">Популярные категории</string>
+    <string name="all_subjects">Все предметы</string>
+    <string name="subject_count_format">%1$d предметов</string>
+    <string name="sort_popular">Сначала популярные</string>
+    <string name="tutors_count_format">%1$d специалистов</string>
+    <string name="tutors_label">РЕПЕТИТОРОВ</string>
+    <string name="level_label">УРОВЕНЬ</string>
+    <string name="open_button">Открыть</string>
+
+    <!-- Профиль -->
+    <string name="profile_title">Профиль</string>
+    <string name="lessons_passed">Уроков пройдено</string>
+    <string name="lessons_count_format">%1$d занятий</string>
+    <string name="balance_label">Баланс</string>
+    <string name="balance_count_format">%1$d урока</string>
+    <string name="active_courses">Активных курсов</string>
+    <string name="courses_count_format">%1$d предмета</string>
+    <string name="payment_methods">Способы оплаты</string>
+    <string name="account_settings">Настройки аккаунта</string>
+    <string name="help_support">Помощь и поддержка</string>
+    <string name="logout">Выйти из аккаунта</string>
+    <string name="logged_out">Вы вышли из аккаунта</string>
+
+    <!-- Детали репетитора -->
+    <string name="tutor_profile_title">Информация о репетиторе</string>
+    <string name="rate">Ставка</string>
+    <string name="experience">Опыт работы</string>
+    <string name="students_helped">Студентов</string>
+    <string name="about_and_expertise">О себе и квалификации</string>
+    <string name="select_date_time">Выберите дату и время</string>
+    <string name="selected_session">Выбранный сеанс</string>
+    <string name="recent_review">Отзыв</string>
+    <string name="view_all">Все отзывы</string>
+    <string name="confirm_booking">Подтвердить бронирование</string>
+    <string name="cancel_booking">Отмена</string>
+    <string name="booking_success">Урок успешно забронирован!</string>
+
+    <!-- Занятия / Заявки -->
+    <string name="lessons_title">Мои занятия</string>
+    <string name="no_lessons">У вас пока нет забронированных занятий</string>
+
+    <!-- Базовые кнопки и сообщения -->
+    <string name="select_account">Выберите аккаунт</string>
+    <string name="create_account">Создание аккаунта</string>
+    <string name="edit_account">Редактировать аккаунт</string>
+    <string name="create_an_account">Создать аккаунт</string>
+    <string name="account_created">Аккаунт успешно создан!</string>
+    <string name="account_selected">Аккаунт выбран!</string>
+    <string name="account_deleted">Аккаунт удален!</string>
+    <string name="account_edited">Данные аккаунта обновлены!</string>
+    <string name="search">Поиск…</string>
+    <string name="description">Описание</string>
+    <string name="filters">Фильтры</string>
+    <string name="reset">Сбросить</string>
+    <string name="background_animation">Анимация фона</string>
+    <string name="background_animation_on">Анимация фона включена</string>
+    <string name="background_animation_off">Анимация фона выключена</string>
+</resources>
