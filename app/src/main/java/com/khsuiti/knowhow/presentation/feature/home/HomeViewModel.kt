@@ -17,6 +17,7 @@ import com.khsuiti.knowhow.data.local.ApiException
 import com.khsuiti.knowhow.data.local.DataStoreKeys
 import com.khsuiti.knowhow.data.local.DataStoreKeys.THEME_MODE_KEY
 import com.khsuiti.knowhow.data.local.ServicesApi
+import com.khsuiti.knowhow.data.local.SubjectsApi
 import com.khsuiti.knowhow.data.local.ThemeMode
 import com.khsuiti.knowhow.data.local.UserProfilesApi
 import com.khsuiti.knowhow.data.repository.PicturesRepository
@@ -132,10 +133,17 @@ class HomeViewModel @Inject constructor(
 			try {
 				runCatching { AdminHelper.verifyAllUnverifiedTutors() }
 
+				val apiSubjectsPage = runCatching { SubjectsApi.list(startIndex = 0, size = 100) }.getOrNull()
+				val subjectsFilter = if (apiSubjectsPage != null && apiSubjectsPage.items.isNotEmpty()) {
+					listOf("Все эксперты") + apiSubjectsPage.items.map { it.name }.distinct()
+				} else {
+					_state.value.popularSubjects
+				}
+
 				val userTutorsPage = runCatching { UserProfilesApi.getAllTutorProfiles(startIndex = 0, size = 50).items }.getOrDefault(emptyList())
 				val adminTutorsPage = runCatching { AdminApi.getTutorProfiles(startIndex = 0, size = 50).items }.getOrDefault(emptyList())
 
-				val servicePage = runCatching { ServicesApi.getServices(startIndex = 0, size = 50).items }.getOrDefault(emptyList())
+				val servicePage = runCatching { ServicesApi.getServices(startIndex = 0, size = 1000).items }.getOrDefault(emptyList())
 				val tutorsFromServices = servicePage.map { it.tutor }
 
 				val allTutors = (userTutorsPage + adminTutorsPage + tutorsFromServices).distinctBy { it.idTutorProfile }
@@ -146,7 +154,7 @@ class HomeViewModel @Inject constructor(
 				for (tutor in allTutors) {
 					val uuid = runCatching { UUID.fromString(tutor.idTutorProfile) }.getOrNull()
 					if (uuid != null) {
-						val tutorServices = runCatching { ServicesApi.getServices(tutorId = uuid, startIndex = 0, size = 50).items }.getOrDefault(emptyList())
+						val tutorServices = runCatching { ServicesApi.getServices(tutorId = uuid, startIndex = 0, size = 1000).items }.getOrDefault(emptyList())
 						allServices.addAll(tutorServices)
 					}
 				}
@@ -157,6 +165,7 @@ class HomeViewModel @Inject constructor(
 					it.copy(
 						tutors = allTutors,
 						services = distinctServices,
+						popularSubjects = subjectsFilter,
 						isLoading = false
 					)
 				}

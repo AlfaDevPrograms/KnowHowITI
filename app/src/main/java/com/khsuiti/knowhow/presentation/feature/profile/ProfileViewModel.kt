@@ -1,5 +1,7 @@
 package com.khsuiti.knowhow.presentation.feature.profile
 
+import android.content.Context
+import android.net.Uri
 import android.util.Log
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
@@ -18,6 +20,7 @@ import com.khsuiti.knowhow.data.local.ThemeMode
 import com.khsuiti.knowhow.data.local.UserProfilesApi
 import com.khsuiti.knowhow.data.local.UsersApi
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -28,6 +31,9 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.File
+import java.io.FileOutputStream
 import java.io.IOException
 import java.util.UUID
 import javax.inject.Inject
@@ -70,6 +76,41 @@ class ProfileViewModel @Inject constructor(
 		}
 	}
 
+	fun uploadTutorPhoto(context: Context, uri: Uri) {
+		viewModelScope.launch {
+			try {
+				_state.update { it.copy(isLoading = true) }
+
+				val file = withContext(Dispatchers.IO) {
+					val mimeType = context.contentResolver.getType(uri) ?: "image/jpeg"
+					val ext = when (mimeType) {
+						"image/png" -> "png"
+						"image/webp" -> "webp"
+						"image/gif" -> "gif"
+						else -> "jpg"
+					}
+					val tempFile = File(context.cacheDir, "tutor_photo_${System.currentTimeMillis()}.$ext")
+
+					context.contentResolver.openInputStream(uri)?.use { input ->
+						FileOutputStream(tempFile).use { output ->
+							input.copyTo(output)
+						}
+					} ?: throw IllegalStateException("Не удалось открыть файл")
+
+					tempFile
+				}
+
+				val updatedProfile = UserProfilesApi.putMyTutorPhoto(file)
+				_state.update {
+					it.copy(photoUrl = updatedProfile.photoURL ?: uri.toString(), isLoading = false)
+				}
+			} catch (e: Exception) {
+				Log.e("ProfileViewModel", "Error uploading photo: ${e.message}", e)
+				_state.update { it.copy(isLoading = false, error = "Ошибка загрузки фото") }
+			}
+		}
+	}
+
 	fun resetLogoutState() {
 		_logoutSuccess.update { false }
 	}
@@ -103,9 +144,12 @@ class ProfileViewModel @Inject constructor(
 				var completed = 0
 				var balance = 0
 				var courses = 0
+				var tutorPhoto: String? = null
 
 				if (isTutor) {
 					try {
+						val tutorProfile = UserProfilesApi.getMyTutorProfile()
+						tutorPhoto = tutorProfile.photoURL
 						val tutorBookings = BookingsApi.getMyTutorBookings(startIndex = 0, size = 50)
 						completed = tutorBookings.items.count { b -> b.isClose }
 						balance = tutorBookings.items.count { b -> !b.isClose }
@@ -133,6 +177,8 @@ class ProfileViewModel @Inject constructor(
 				_state.update {
 					it.copy(
 						accountInfo = accountInfo,
+						photoUrl = tutorPhoto ?: it.photoUrl,
+						isTutor = isTutor,
 						completedLessonsCount = completed,
 						balanceLessonsCount = balance,
 						activeCoursesCount = courses,

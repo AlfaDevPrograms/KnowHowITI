@@ -1,6 +1,9 @@
 package com.khsuiti.knowhow.presentation.feature.profile
 
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
@@ -84,6 +87,15 @@ fun ProfileScreen(
 	val grayTextColor = if (isDark) Color.Gray else color1
 	val profileIconColor = if (isDark) MaterialTheme.colorScheme.secondary else color1
 
+	val photoPickerLauncher = rememberLauncherForActivityResult(
+		contract = ActivityResultContracts.PickVisualMedia(),
+		onResult = { uri ->
+			if (uri != null) {
+				viewModel.uploadTutorPhoto(context, uri)
+			}
+		}
+	)
+
 	LaunchedEffect(Unit) {
 		viewModel.handleIntent(ProfileIntent.LoadProfile)
 	}
@@ -152,11 +164,18 @@ fun ProfileScreen(
 					Column(modifier = Modifier.padding(20.dp)) {
 						Row(verticalAlignment = Alignment.CenterVertically) {
 							AsyncImage(
-								model = "https://images.unsplash.com/photo-1534528741775-53994a69daeb",
-								contentDescription = null,
+								model = state.photoUrl ?: "https://images.unsplash.com/photo-1534528741775-53994a69daeb",
+								contentDescription = "Profile Photo",
 								modifier = Modifier
 									.size(64.dp)
-									.clip(CircleShape),
+									.clip(CircleShape)
+									.clickable {
+										if (state.isTutor) {
+											photoPickerLauncher.launch(
+												PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+											)
+										}
+									},
 								contentScale = ContentScale.Crop,
 								error = painterResource(id = R.drawable.logo)
 							)

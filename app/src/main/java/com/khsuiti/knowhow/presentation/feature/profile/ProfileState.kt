@@ -4,6 +4,8 @@ import com.khsuiti.knowhow.responsesData.AccountInfoResponse
 
 data class ProfileState(
 	val accountInfo: AccountInfoResponse? = null,
+	val photoUrl: String? = null,
+	val isTutor: Boolean = false,
 	val completedLessonsCount: Int = 0,
 	val balanceLessonsCount: Int = 0,
 	val activeCoursesCount: Int = 0,

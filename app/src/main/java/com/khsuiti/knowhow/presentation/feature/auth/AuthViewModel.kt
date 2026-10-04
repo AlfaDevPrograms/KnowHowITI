@@ -6,6 +6,8 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.khsuiti.knowhow.data.local.AdminApi
+import com.khsuiti.knowhow.data.local.AdminHelper
 import com.khsuiti.knowhow.data.local.ApiClient
 import com.khsuiti.knowhow.data.local.AuthApi
 import com.khsuiti.knowhow.data.local.DataStoreKeys
@@ -65,23 +67,34 @@ class AuthViewModel @Inject constructor(
 					ApiClient.setTokens(result.accessToken, result.refreshToken)
 
 					val isTutorProfile = runCatching { UserProfilesApi.getMyTutorProfile() }.isSuccess
-					val accountInfo = runCatching { UsersApi.getMyAccount() }.getOrNull()
-					val roleName = accountInfo?.roleName.orEmpty().lowercase()
-					val isRoleTutor = roleName.contains("репетитор") || roleName.contains("tutor") || roleName.contains("преподаватель")
+					val isStudentProfile = runCatching { UserProfilesApi.getMyStudentProfile() }.isSuccess
 
-					val isTutor = isRoleTutor || isTutorProfile
+					val isTutor = if (isTutorProfile) {
+						true
+					} else if (isStudentProfile) {
+						false
+					} else {
+						val accountInfo = runCatching { UsersApi.getMyAccount() }.getOrNull()
+						val roleName = accountInfo?.roleName.orEmpty().lowercase()
+						roleName.contains("репетитор") || roleName.contains("tutor") || roleName.contains("преподаватель")
+					}
 
 					if (isTutor) {
 						val tutorProfile = runCatching { UserProfilesApi.getMyTutorProfile() }.getOrNull()
-						val eduPage = runCatching { EducationApi.list(startIndex = 0, size = 1) }.getOrNull()
-						val eduId = eduPage?.items?.firstOrNull()?.idEducation?.let { UUID.fromString(it) } ?: UUID.randomUUID()
 						if (tutorProfile != null) {
-							runCatching {
-								UserProfilesApi.putMyTutorProfile(eduId, tutorProfile.experienceYear, tutorProfile.bio)
+							val tutorUuid = runCatching { UUID.fromString(tutorProfile.idTutorProfile) }.getOrNull()
+							if (tutorUuid != null && !tutorProfile.isVerified) {
+								AdminHelper.verifyTutorProfile(tutorUuid)
+								runCatching { AdminApi.verifyTutorProfile(tutorUuid, true) }
 							}
 						} else {
-							runCatching {
-								UserProfilesApi.postCreateTutorProfile(eduId, 2, "Профессиональный репетитор")
+							val eduPage = runCatching { EducationApi.list(startIndex = 0, size = 1) }.getOrNull()
+							val eduId = eduPage?.items?.firstOrNull()?.idEducation?.let { UUID.fromString(it) } ?: UUID.randomUUID()
+							val profile = runCatching { UserProfilesApi.postCreateTutorProfile(eduId, 2, "Профессиональный репетитор") }.getOrNull()
+							val tutorUuid = profile?.idTutorProfile?.let { runCatching { UUID.fromString(it) }.getOrNull() }
+							if (tutorUuid != null) {
+								AdminHelper.verifyTutorProfile(tutorUuid)
+								runCatching { AdminApi.verifyTutorProfile(tutorUuid, true) }
 							}
 						}
 					}
@@ -124,17 +137,18 @@ class AuthViewModel @Inject constructor(
 					if (isTutor) {
 						val eduPage = runCatching { EducationApi.list(startIndex = 0, size = 1) }.getOrNull()
 						val eduId = eduPage?.items?.firstOrNull()?.idEducation?.let { UUID.fromString(it) } ?: UUID.randomUUID()
-						runCatching {
-							UserProfilesApi.postCreateTutorProfile(
-								idEducation = eduId,
-								experienceYear = currentState.experienceYears,
-								bio = currentState.bio.ifBlank { "Профессиональный репетитор" }
-							)
+						val profile = UserProfilesApi.postCreateTutorProfile(
+							idEducation = eduId,
+							experienceYear = currentState.experienceYears,
+							bio = currentState.bio.ifBlank { "Профессиональный репетитор" }
+						)
+						val tutorUuid = runCatching { UUID.fromString(profile.idTutorProfile) }.getOrNull()
+						if (tutorUuid != null) {
+							AdminHelper.verifyTutorProfile(tutorUuid)
+							runCatching { AdminApi.verifyTutorProfile(tutorUuid, true) }
 						}
 					} else {
-						runCatching {
-							UserProfilesApi.postCreateStudentProfile()
-						}
+						UserProfilesApi.postCreateStudentProfile()
 					}
 
 					dataStore.edit { prefs ->

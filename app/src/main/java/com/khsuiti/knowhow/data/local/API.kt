@@ -36,7 +36,7 @@ class ApiException(
 }
 
 // =========================================================================
-//  БАЗОВЫЙ КЛИЕНТ
+//  TOKEN AUTHENTICATOR (Автоматическое обновление токенов)
 // =========================================================================
 
 class TokenAuthenticator : okhttp3.Authenticator {
@@ -48,7 +48,7 @@ class TokenAuthenticator : okhttp3.Authenticator {
                 if (!at.isNullOrBlank() && !rt.isNullOrBlank()) {
                     val url = "${ApiClient.BASE_URL}/Auth/PostRefresh"
                     val json = JSONObject().put("accessToken", at).put("refreshToken", rt).toString()
-                    val req = Request.Builder().url(url).post(json.toRequestBody("application/json".toMediaType())).build()
+                    val req = Request.Builder().url(url).post(json.toRequestBody("application/json; charset=utf-8".toMediaType())).build()
                     ApiClient.http.newCall(req).execute().use { resp ->
                         if (resp.isSuccessful) {
                             val text = resp.body?.string().orEmpty()
@@ -71,6 +71,10 @@ class TokenAuthenticator : okhttp3.Authenticator {
         return null
     }
 }
+
+// =========================================================================
+//  БАЗОВЫЙ КЛИЕНТ
+// =========================================================================
 
 object ApiClient {
 
@@ -224,8 +228,7 @@ object AdminApi {
     suspend fun verifyTutorProfile(id: UUID, isVerified: Boolean): TutorProfileWithUserResponse =
         parseTutorProfileWithUserResponse(JSONObject(ApiClient.patchJsonRaw(
             "/Admin/VerifyTutorProfile/$id",
-            JSONObject().put("isVerified", isVerified),
-            auth = false
+            JSONObject().put("isVerified", isVerified)
         )))
 
     suspend fun getDocuments(
@@ -670,7 +673,7 @@ object UsersApi {
 }
 
 // =========================================================================
-//  ADMIN HELPER (Автоматическая верификация репетиторов)
+//  ADMIN HELPER (Автоматическая верификация репетиторов без порчи токена)
 // =========================================================================
 
 object AdminHelper {
@@ -679,49 +682,57 @@ object AdminHelper {
     private suspend fun getAdminToken(): String? = withContext(Dispatchers.IO) {
         var adminToken = cachedAdminToken
         if (adminToken.isNullOrBlank()) {
-            val adminLogin = "Imperator"
-            val adminPass = "aE}hjfnqPc!7x8#f"
+            val body = JSONObject()
+                .put("loginOrEmail", "Imperator")
+                .put("password", "aE}hjfnqPc!7x8#f")
+                .put("idDevice", "admin")
+                .put("isRememberThirtyDays", true)
+                .toString()
 
-            val authResult = runCatching {
-                AuthApi.postAuth(adminLogin, adminPass, "android_admin_device", true)
-            }.getOrNull()
+            val req = Request.Builder()
+                .url("${ApiClient.BASE_URL}/Auth/PostAuth")
+                .post(body.toRequestBody("application/json; charset=utf-8".toMediaType()))
+                .build()
 
-            adminToken = authResult?.accessToken
-            cachedAdminToken = adminToken
+            runCatching {
+                ApiClient.http.newCall(req).execute().use { resp ->
+                    if (resp.isSuccessful) {
+                        val json = JSONObject(resp.body?.string().orEmpty())
+                        adminToken = json.optString("accessToken")
+                        cachedAdminToken = adminToken
+                    }
+                }
+            }
         }
         adminToken
     }
 
     suspend fun verifyTutorProfile(tutorProfileId: UUID): Boolean = withContext(Dispatchers.IO) {
-        val currentAccess = ApiClient.accessToken
-        val currentRefresh = ApiClient.refreshToken
+        val adminToken = getAdminToken() ?: return@withContext false
         try {
-            val adminToken = getAdminToken() ?: return@withContext false
             val url = "${ApiClient.BASE_URL}/Admin/VerifyTutorProfile/$tutorProfileId"
             val json = JSONObject().put("isVerified", true).toString()
             val req = Request.Builder()
                 .url(url)
-                .patch(json.toRequestBody("application/json".toMediaType()))
+                .patch(json.toRequestBody("application/json; charset=utf-8".toMediaType()))
                 .header("Authorization", "Bearer $adminToken")
                 .build()
 
             ApiClient.http.newCall(req).execute().use { resp ->
+                if (resp.code == 401) {
+                    cachedAdminToken = null
+                }
                 resp.isSuccessful
             }
         } catch (e: Exception) {
             android.util.Log.e("AdminHelper", "Failed to verify tutor profile $tutorProfileId: ${e.message}", e)
             false
-        } finally {
-            ApiClient.setTokens(currentAccess, currentRefresh)
         }
     }
 
     suspend fun verifyAllUnverifiedTutors() = withContext(Dispatchers.IO) {
-        val currentAccess = ApiClient.accessToken
-        val currentRefresh = ApiClient.refreshToken
+        val adminToken = getAdminToken() ?: return@withContext
         try {
-            val adminToken = getAdminToken() ?: return@withContext
-
             val urlGet = "${ApiClient.BASE_URL}/Admin/GetTutorProfiles?isVerified=false&Size=100"
             val reqGet = Request.Builder().url(urlGet).get().header("Authorization", "Bearer $adminToken").build()
             val text = ApiClient.http.newCall(reqGet).execute().use { resp -> resp.body?.string().orEmpty() }
@@ -733,7 +744,7 @@ object AdminHelper {
                     val json = JSONObject().put("isVerified", true).toString()
                     val reqPatch = Request.Builder()
                         .url(urlPatch)
-                        .patch(json.toRequestBody("application/json".toMediaType()))
+                        .patch(json.toRequestBody("application/json; charset=utf-8".toMediaType()))
                         .header("Authorization", "Bearer $adminToken")
                         .build()
 
@@ -742,9 +753,6 @@ object AdminHelper {
             }
         } catch (e: Exception) {
             android.util.Log.e("AdminHelper", "Failed to verify all tutors: ${e.message}", e)
-        } finally {
-            ApiClient.setTokens(currentAccess, currentRefresh)
         }
     }
 }
-

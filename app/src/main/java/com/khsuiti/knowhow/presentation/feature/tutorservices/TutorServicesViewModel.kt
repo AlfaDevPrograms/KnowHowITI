@@ -6,13 +6,11 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.khsuiti.knowhow.data.local.ApiException
 import com.khsuiti.knowhow.data.local.DataStoreKeys
 import com.khsuiti.knowhow.data.local.EducationApi
 import com.khsuiti.knowhow.data.local.ServicesApi
 import com.khsuiti.knowhow.data.local.SubjectsApi
 import com.khsuiti.knowhow.data.local.UserProfilesApi
-import com.khsuiti.knowhow.responsesData.PageResponse
 import com.khsuiti.knowhow.responsesData.ServiceResponse
 import com.khsuiti.knowhow.responsesData.SubjectResponse
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -42,10 +40,22 @@ class TutorServicesViewModel @Inject constructor(
 
 	init {
 		loadData()
+		loadSubjects()
 	}
 
 	fun clearState() {
 		_state.update { TutorServicesState() }
+	}
+
+	fun loadSubjects() {
+		viewModelScope.launch {
+			try {
+				val page = SubjectsApi.list(startIndex = 0, size = 100)
+				_state.update { it.copy(subjects = page.items) }
+			} catch (e: Exception) {
+				Log.e("TutorServicesVM", "Error loading subjects from /Subjects: ${e.message}", e)
+			}
+		}
 	}
 
 	fun loadData() {
@@ -62,7 +72,7 @@ class TutorServicesViewModel @Inject constructor(
 				}
 
 				val allFetchedServices = (myServices + tutorServices).distinctBy { it.idService }
-				val subjectsPage = runCatching { SubjectsApi.list(startIndex = 0, size = 50) }.getOrNull()
+				val subjectsPage = runCatching { SubjectsApi.list(startIndex = 0, size = 100) }.getOrNull()
 
 				val activeSet = dataStore.data.first()[DataStoreKeys.ACTIVE_SERVICE_IDS] ?: emptySet()
 				val servicesWithActive = allFetchedServices.map { s ->
@@ -72,7 +82,7 @@ class TutorServicesViewModel @Inject constructor(
 				_state.update {
 					it.copy(
 						services = servicesWithActive,
-						subjects = subjectsPage?.items ?: emptyList(),
+						subjects = subjectsPage?.items.orEmpty().ifEmpty { it.subjects },
 						isLoading = false,
 						error = null
 					)
@@ -94,18 +104,25 @@ class TutorServicesViewModel @Inject constructor(
 					isOnlineFormat = true,
 					description = description
 				)
+				
+				val serviceUuid = runCatching { UUID.fromString(created.idService) }.getOrNull()
+				val activeCreated = if (serviceUuid != null) {
+					runCatching { ServicesApi.setActive(serviceUuid, true) }.getOrDefault(created.copy(isActive = true))
+				} else {
+					created.copy(isActive = true)
+				}
+
 				dataStore.edit { prefs ->
 					val set = (prefs[DataStoreKeys.ACTIVE_SERVICE_IDS] ?: emptySet()).toMutableSet()
-					set.add(created.idService)
+					set.add(activeCreated.idService)
 					prefs[DataStoreKeys.ACTIVE_SERVICE_IDS] = set
 				}
+
+				_state.update { it.copy(services = it.services + activeCreated) }
 				loadData()
-			} catch (e: ApiException) {
-				Log.e("TutorServicesVM", "createService error: ${e.code} ${e.body}", e)
-				_state.update { it.copy(error = e.errorMessage() ?: e.body) }
 			} catch (e: Exception) {
 				Log.e("TutorServicesVM", "createService exception: ${e.message}", e)
-				_state.update { it.copy(error = e.message) }
+				_state.update { it.copy(error = e.message ?: "Ошибка создания услуги") }
 			}
 		}
 	}
@@ -113,7 +130,7 @@ class TutorServicesViewModel @Inject constructor(
 	fun updateService(idService: UUID, idSubject: UUID, lessonDuration: Int, price: Double, description: String) {
 		viewModelScope.launch {
 			try {
-				ServicesApi.putService(
+				val updated = ServicesApi.putService(
 					id = idService,
 					idSubject = idSubject,
 					lessonDurationMinutes = lessonDuration,
@@ -121,48 +138,51 @@ class TutorServicesViewModel @Inject constructor(
 					isOnlineFormat = true,
 					description = description
 				)
+				runCatching { ServicesApi.setActive(idService, true) }
 				dataStore.edit { prefs ->
 					val set = (prefs[DataStoreKeys.ACTIVE_SERVICE_IDS] ?: emptySet()).toMutableSet()
 					set.add(idService.toString())
 					prefs[DataStoreKeys.ACTIVE_SERVICE_IDS] = set
 				}
+				_state.update { st ->
+					st.copy(services = st.services.map { if (it.idService == idService.toString()) updated.copy(isActive = true) else it })
+				}
 				loadData()
-			} catch (e: ApiException) {
-				Log.e("TutorServicesVM", "updateService error: ${e.code} ${e.body}", e)
-				_state.update { it.copy(error = e.errorMessage() ?: e.body) }
 			} catch (e: Exception) {
 				Log.e("TutorServicesVM", "updateService exception: ${e.message}", e)
-				_state.update { it.copy(error = e.message) }
+				_state.update { it.copy(error = e.message ?: "Ошибка обновления услуги") }
 			}
 		}
 	}
 
-	fun toggleActive(idService: UUID, currentActive: Boolean) {
+	fun toggleActive(idServiceStr: String, currentActive: Boolean) {
 		val newActiveState = !currentActive
-		val serviceIdStr = idService.toString()
+
+		// Optimistic UI update immediately
+		val updatedList = _state.value.services.map { s ->
+			if (s.idService == idServiceStr) s.copy(isActive = newActiveState) else s
+		}
+		_state.update { it.copy(services = updatedList) }
 
 		viewModelScope.launch {
 			dataStore.edit { prefs ->
 				val set = (prefs[DataStoreKeys.ACTIVE_SERVICE_IDS] ?: emptySet()).toMutableSet()
 				if (newActiveState) {
-					set.add(serviceIdStr)
+					set.add(idServiceStr)
 				} else {
-					set.remove(serviceIdStr)
+					set.remove(idServiceStr)
 				}
 				prefs[DataStoreKeys.ACTIVE_SERVICE_IDS] = set
 			}
-		}
 
-		val updatedList = _state.value.services.map { s ->
-			if (s.idService == serviceIdStr) s.copy(isActive = newActiveState) else s
-		}
-		_state.update { it.copy(services = updatedList) }
-
-		viewModelScope.launch {
-			try {
-				ServicesApi.setActive(idService, newActiveState)
-			} catch (e: Exception) {
-				Log.e("TutorServicesVM", "toggleActive exception (ignored for UX): ${e.message}", e)
+			val serviceUuid = runCatching { UUID.fromString(idServiceStr) }.getOrNull()
+			if (serviceUuid != null) {
+				runCatching {
+					val updatedFromApi = ServicesApi.setActive(serviceUuid, newActiveState)
+					_state.update { st ->
+						st.copy(services = st.services.map { if (it.idService == idServiceStr) updatedFromApi else it })
+					}
+				}
 			}
 		}
 	}

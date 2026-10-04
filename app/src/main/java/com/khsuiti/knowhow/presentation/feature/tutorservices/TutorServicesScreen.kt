@@ -58,6 +58,10 @@ fun TutorServicesScreen(
 	var showCreateDialog by remember { mutableStateOf(false) }
 	var serviceToEdit by remember { mutableStateOf<ServiceResponse?>(null) }
 
+	LaunchedEffect(Unit) {
+		viewModel.loadData()
+	}
+
 	state.error?.let { err ->
 		LaunchedEffect(err) {
 			Toast.makeText(context, err, Toast.LENGTH_LONG).show()
@@ -155,10 +159,7 @@ fun TutorServicesScreen(
 									Text(text = "${service.lessonDurationMinutes} мин", fontWeight = FontWeight.SemiBold)
 									Text(text = "$${service.priceInDollars}/час", color = MaterialTheme.colorScheme.secondary, fontWeight = FontWeight.Bold)
 									TextButton(onClick = {
-										val uuid = runCatching { UUID.fromString(service.idService) }.getOrNull()
-										if (uuid != null) {
-											viewModel.toggleActive(uuid, service.isActive)
-										}
+										viewModel.toggleActive(service.idService, service.isActive)
 									}) {
 										Text(
 											text = if (service.isActive) "Активен" else "Выключен",
@@ -175,6 +176,9 @@ fun TutorServicesScreen(
 		}
 
 		if (showCreateDialog) {
+			LaunchedEffect(Unit) {
+				viewModel.loadSubjects()
+			}
 			ServiceDialog(
 				title = "Создать новую услугу",
 				subjects = state.subjects,

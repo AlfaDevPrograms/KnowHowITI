@@ -165,15 +165,6 @@ fun HomeScreen(
 								tint = MaterialTheme.colorScheme.secondary
 							)
 						},
-						trailingIcon = {
-							IconButton(onClick = {}) {
-								Icon(
-									imageVector = Icons.Rounded.FilterList,
-									contentDescription = null,
-									tint = MaterialTheme.colorScheme.secondary
-								)
-							}
-						},
 						singleLine = true,
 						keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
 						keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),

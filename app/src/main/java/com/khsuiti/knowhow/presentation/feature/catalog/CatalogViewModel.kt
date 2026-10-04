@@ -10,6 +10,7 @@ import com.khsuiti.knowhow.data.local.ApiClient
 import com.khsuiti.knowhow.data.local.ApiException
 import com.khsuiti.knowhow.data.local.DataStoreKeys.THEME_MODE_KEY
 import com.khsuiti.knowhow.data.local.ServicesApi
+import com.khsuiti.knowhow.data.local.SubjectsApi
 import com.khsuiti.knowhow.data.local.ThemeMode
 import com.khsuiti.knowhow.data.local.UserProfilesApi
 import com.khsuiti.knowhow.responsesData.ServiceResponse
@@ -79,15 +80,22 @@ class CatalogViewModel @Inject constructor(
 		_state.update { it.copy(isLoading = true, error = null) }
 		viewModelScope.launch {
 			try {
+				val apiSubjectsPage = runCatching { SubjectsApi.list(startIndex = 0, size = 100) }.getOrNull()
+				val categories = if (apiSubjectsPage != null && apiSubjectsPage.items.isNotEmpty()) {
+					listOf("Все предметы") + apiSubjectsPage.items.map { it.name }.distinct()
+				} else {
+					_state.value.popularCategories
+				}
+
 				val allServices = ArrayList<ServiceResponse>()
-				val publicServices = runCatching { ServicesApi.getServices(startIndex = 0, size = 50).items }.getOrDefault(emptyList())
+				val publicServices = runCatching { ServicesApi.getServices(startIndex = 0, size = 1000).items }.getOrDefault(emptyList())
 				allServices.addAll(publicServices)
 
-				val allTutors = runCatching { UserProfilesApi.getAllTutorProfiles(startIndex = 0, size = 50).items }.getOrDefault(emptyList())
+				val allTutors = runCatching { UserProfilesApi.getAllTutorProfiles(startIndex = 0, size = 100).items }.getOrDefault(emptyList())
 				for (tutor in allTutors) {
 					val uuid = runCatching { UUID.fromString(tutor.idTutorProfile) }.getOrNull()
 					if (uuid != null) {
-						val tutorServices = runCatching { ServicesApi.getServices(tutorId = uuid, startIndex = 0, size = 50).items }.getOrDefault(emptyList())
+						val tutorServices = runCatching { ServicesApi.getServices(tutorId = uuid, startIndex = 0, size = 1000).items }.getOrDefault(emptyList())
 						allServices.addAll(tutorServices)
 					}
 				}
@@ -111,6 +119,7 @@ class CatalogViewModel @Inject constructor(
 				_state.update {
 					it.copy(
 						subjects = mappedItems,
+						popularCategories = categories,
 						isLoading = false
 					)
 				}
@@ -129,7 +138,7 @@ class CatalogViewModel @Inject constructor(
 					it.copy(
 						isLoading = false,
 						subjects = emptyList(),
-						error = "Нет соединения с сервером"
+						error = "Ошибка загрузки каталога"
 					)
 				}
 			}
