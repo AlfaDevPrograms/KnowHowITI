@@ -6,17 +6,15 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.khsuiti.knowhow.data.local.ApiException
 import com.khsuiti.knowhow.data.local.DataStoreKeys
 import com.khsuiti.knowhow.data.local.EducationApi
 import com.khsuiti.knowhow.data.local.ServicesApi
 import com.khsuiti.knowhow.data.local.SubjectsApi
 import com.khsuiti.knowhow.data.local.UserProfilesApi
-import com.khsuiti.knowhow.responsesData.EducationResponse
 import com.khsuiti.knowhow.responsesData.PageResponse
 import com.khsuiti.knowhow.responsesData.ServiceResponse
 import com.khsuiti.knowhow.responsesData.SubjectResponse
-import com.khsuiti.knowhow.responsesData.TutorProfileWithUserResponse
-import com.khsuiti.knowhow.responsesData.UserResponse
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -24,7 +22,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.math.BigDecimal
 import java.util.UUID
 import javax.inject.Inject
 
@@ -74,7 +71,7 @@ class TutorServicesViewModel @Inject constructor(
 
 				_state.update {
 					it.copy(
-						services = if (servicesWithActive.isNotEmpty()) servicesWithActive else it.services,
+						services = servicesWithActive,
 						subjects = subjectsPage?.items ?: emptyList(),
 						isLoading = false,
 						error = null
@@ -102,35 +99,13 @@ class TutorServicesViewModel @Inject constructor(
 					set.add(created.idService)
 					prefs[DataStoreKeys.ACTIVE_SERVICE_IDS] = set
 				}
-				_state.update { it.copy(services = it.services + created.copy(isActive = true)) }
 				loadData()
+			} catch (e: ApiException) {
+				Log.e("TutorServicesVM", "createService error: ${e.code} ${e.body}", e)
+				_state.update { it.copy(error = e.errorMessage() ?: e.body) }
 			} catch (e: Exception) {
 				Log.e("TutorServicesVM", "createService exception: ${e.message}", e)
-				val subjectName = _state.value.subjects.find { it.idSubject == idSubject.toString() }?.name ?: "Дисциплина"
-				val mockTutor = TutorProfileWithUserResponse(
-					idTutorProfile = "t1", experienceYear = 2, createdDate = "", isVerified = true, isDeleted = false,
-					user = UserResponse("Репетитор", "", null), bio = description,
-					photoURL = null, education = EducationResponse("", ""),
-					averageRating = 5.0, reviewCount = 0, reviews = PageResponse(0, 0, 0, emptyList())
-				)
-				val serviceId = UUID.randomUUID().toString()
-				val optimisticService = ServiceResponse(
-					idService = serviceId,
-					idSubject = idSubject.toString(),
-					subjectName = subjectName,
-					description = description.ifBlank { "Индивидуальные занятия" },
-					lessonDurationMinutes = lessonDuration,
-					priceInDollars = BigDecimal(price.toString()),
-					isOnlineFormat = true,
-					isActive = true,
-					tutor = mockTutor
-				)
-				dataStore.edit { prefs ->
-					val set = (prefs[DataStoreKeys.ACTIVE_SERVICE_IDS] ?: emptySet()).toMutableSet()
-					set.add(serviceId)
-					prefs[DataStoreKeys.ACTIVE_SERVICE_IDS] = set
-				}
-				_state.update { it.copy(services = it.services + optimisticService) }
+				_state.update { it.copy(error = e.message) }
 			}
 		}
 	}
@@ -152,25 +127,12 @@ class TutorServicesViewModel @Inject constructor(
 					prefs[DataStoreKeys.ACTIVE_SERVICE_IDS] = set
 				}
 				loadData()
+			} catch (e: ApiException) {
+				Log.e("TutorServicesVM", "updateService error: ${e.code} ${e.body}", e)
+				_state.update { it.copy(error = e.errorMessage() ?: e.body) }
 			} catch (e: Exception) {
 				Log.e("TutorServicesVM", "updateService exception: ${e.message}", e)
-				dataStore.edit { prefs ->
-					val set = (prefs[DataStoreKeys.ACTIVE_SERVICE_IDS] ?: emptySet()).toMutableSet()
-					set.add(idService.toString())
-					prefs[DataStoreKeys.ACTIVE_SERVICE_IDS] = set
-				}
-				val updatedList = _state.value.services.map { s ->
-					if (s.idService == idService.toString()) {
-						s.copy(
-							idSubject = idSubject.toString(),
-							lessonDurationMinutes = lessonDuration,
-							priceInDollars = BigDecimal(price.toString()),
-							description = description,
-							isActive = true
-						)
-					} else s
-				}
-				_state.update { it.copy(services = updatedList) }
+				_state.update { it.copy(error = e.message) }
 			}
 		}
 	}

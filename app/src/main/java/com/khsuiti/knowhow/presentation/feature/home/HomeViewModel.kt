@@ -10,6 +10,8 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.khsuiti.knowhow.data.local.AdminApi
+import com.khsuiti.knowhow.data.local.AdminHelper
 import com.khsuiti.knowhow.data.local.ApiClient
 import com.khsuiti.knowhow.data.local.ApiException
 import com.khsuiti.knowhow.data.local.DataStoreKeys
@@ -18,6 +20,7 @@ import com.khsuiti.knowhow.data.local.ServicesApi
 import com.khsuiti.knowhow.data.local.ThemeMode
 import com.khsuiti.knowhow.data.local.UserProfilesApi
 import com.khsuiti.knowhow.data.repository.PicturesRepository
+import com.khsuiti.knowhow.responsesData.ServiceResponse
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -31,6 +34,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.io.IOException
+import java.util.UUID
 import javax.inject.Inject
 
 @HiltViewModel
@@ -126,13 +130,33 @@ class HomeViewModel @Inject constructor(
 		_state.update { it.copy(isLoading = true, error = null) }
 		viewModelScope.launch {
 			try {
-				val tutorPage = UserProfilesApi.getAllTutorProfiles(startIndex = 0, size = 50)
-				val servicePage = ServicesApi.getServices(startIndex = 0, size = 50)
+				runCatching { AdminHelper.verifyAllUnverifiedTutors() }
+
+				val userTutorsPage = runCatching { UserProfilesApi.getAllTutorProfiles(startIndex = 0, size = 50).items }.getOrDefault(emptyList())
+				val adminTutorsPage = runCatching { AdminApi.getTutorProfiles(startIndex = 0, size = 50).items }.getOrDefault(emptyList())
+
+				val servicePage = runCatching { ServicesApi.getServices(startIndex = 0, size = 50).items }.getOrDefault(emptyList())
+				val tutorsFromServices = servicePage.map { it.tutor }
+
+				val allTutors = (userTutorsPage + adminTutorsPage + tutorsFromServices).distinctBy { it.idTutorProfile }
+
+				val allServices = ArrayList<ServiceResponse>()
+				allServices.addAll(servicePage)
+
+				for (tutor in allTutors) {
+					val uuid = runCatching { UUID.fromString(tutor.idTutorProfile) }.getOrNull()
+					if (uuid != null) {
+						val tutorServices = runCatching { ServicesApi.getServices(tutorId = uuid, startIndex = 0, size = 50).items }.getOrDefault(emptyList())
+						allServices.addAll(tutorServices)
+					}
+				}
+
+				val distinctServices = allServices.distinctBy { it.idService }
 
 				_state.update {
 					it.copy(
-						tutors = tutorPage.items,
-						services = servicePage.items,
+						tutors = allTutors,
+						services = distinctServices,
 						isLoading = false
 					)
 				}

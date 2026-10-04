@@ -8,7 +8,6 @@ import androidx.compose.runtime.getValue
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation.compose.rememberNavController
 import com.khsuiti.knowhow.presentation.common.ui.theme.AlfaDemobCalendarTheme
 import com.khsuiti.knowhow.presentation.feature.settings.SettingsViewModel
 import dagger.hilt.android.AndroidEntryPoint
@@ -20,20 +19,18 @@ class MainActivity : ComponentActivity() {
 		super.onCreate(savedInstanceState)
 		enableEdgeToEdge()
 		setContent {
-			val navController = rememberNavController()
 			val settingsViewModel: SettingsViewModel = hiltViewModel()
 			val mainViewModel: MainViewModel = hiltViewModel()
 
 			val settingsState by settingsViewModel.state.collectAsStateWithLifecycle()
-			val startDestination by mainViewModel.startDestination.collectAsStateWithLifecycle()
+			val appAuthState by mainViewModel.appAuthState.collectAsStateWithLifecycle()
 
 			AlfaDemobCalendarTheme(
 				themeMode = settingsState.themeMode
 			) {
-				if (startDestination != null) {
-					MainScreen(
-						navController = navController,
-						startDestination = startDestination!!,
+				if (!appAuthState.isLoading) {
+					RootAppNavigation(
+						appAuthState = appAuthState,
 						settingsViewModel = settingsViewModel
 					)
 				}

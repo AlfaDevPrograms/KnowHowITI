@@ -6,12 +6,12 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.khsuiti.knowhow.data.local.AdminHelper
 import com.khsuiti.knowhow.data.local.ApiClient
 import com.khsuiti.knowhow.data.local.AuthApi
 import com.khsuiti.knowhow.data.local.DataStoreKeys
 import com.khsuiti.knowhow.data.local.EducationApi
 import com.khsuiti.knowhow.data.local.UserProfilesApi
+import com.khsuiti.knowhow.data.local.UsersApi
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -64,14 +64,24 @@ class AuthViewModel @Inject constructor(
 					)
 					ApiClient.setTokens(result.accessToken, result.refreshToken)
 
-					// Bulletproof role check: check if tutor profile exists on backend
-					val isTutor = runCatching { UserProfilesApi.getMyTutorProfile() }.isSuccess
+					val isTutorProfile = runCatching { UserProfilesApi.getMyTutorProfile() }.isSuccess
+					val accountInfo = runCatching { UsersApi.getMyAccount() }.getOrNull()
+					val roleName = accountInfo?.roleName.orEmpty().lowercase()
+					val isRoleTutor = roleName.contains("репетитор") || roleName.contains("tutor") || roleName.contains("преподаватель")
+
+					val isTutor = isRoleTutor || isTutorProfile
 
 					if (isTutor) {
 						val tutorProfile = runCatching { UserProfilesApi.getMyTutorProfile() }.getOrNull()
-						if (tutorProfile != null && !tutorProfile.isVerified) {
+						val eduPage = runCatching { EducationApi.list(startIndex = 0, size = 1) }.getOrNull()
+						val eduId = eduPage?.items?.firstOrNull()?.idEducation?.let { UUID.fromString(it) } ?: UUID.randomUUID()
+						if (tutorProfile != null) {
 							runCatching {
-								AdminHelper.ensureTutorVerified(UUID.fromString(tutorProfile.idTutorProfile))
+								UserProfilesApi.putMyTutorProfile(eduId, tutorProfile.experienceYear, tutorProfile.bio)
+							}
+						} else {
+							runCatching {
+								UserProfilesApi.postCreateTutorProfile(eduId, 2, "Профессиональный репетитор")
 							}
 						}
 					}
@@ -120,10 +130,6 @@ class AuthViewModel @Inject constructor(
 								experienceYear = currentState.experienceYears,
 								bio = currentState.bio.ifBlank { "Профессиональный репетитор" }
 							)
-						}
-						runCatching {
-							val profile = UserProfilesApi.getMyTutorProfile()
-							AdminHelper.ensureTutorVerified(UUID.fromString(profile.idTutorProfile))
 						}
 					} else {
 						runCatching {

@@ -3,11 +3,13 @@ package com.khsuiti.knowhow.presentation.feature.tutorschedule
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.khsuiti.knowhow.data.local.ApiClient
 import com.khsuiti.knowhow.data.local.ApiException
 import com.khsuiti.knowhow.data.local.EducationApi
 import com.khsuiti.knowhow.data.local.SchedulesApi
 import com.khsuiti.knowhow.data.local.ServicesApi
 import com.khsuiti.knowhow.data.local.UserProfilesApi
+import com.khsuiti.knowhow.responsesData.PageResponse
 import com.khsuiti.knowhow.responsesData.ScheduleResponse
 import com.khsuiti.knowhow.responsesData.ServiceResponse
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -41,6 +43,7 @@ class TutorScheduleViewModel @Inject constructor() : ViewModel() {
 	}
 
 	fun loadSchedule() {
+		if (ApiClient.accessToken.isNullOrBlank()) return
 		_state.update { it.copy(isLoading = true, error = null) }
 		viewModelScope.launch {
 			try {
@@ -51,22 +54,29 @@ class TutorScheduleViewModel @Inject constructor() : ViewModel() {
 						val eduPage = runCatching { EducationApi.list(startIndex = 0, size = 1) }.getOrNull()
 						val eduId = eduPage?.items?.firstOrNull()?.idEducation?.let { UUID.fromString(it) } ?: UUID.randomUUID()
 						runCatching { UserProfilesApi.postCreateTutorProfile(eduId, 2, "Профессиональный репетитор") }
-						SchedulesApi.getMySchedule(startIndex = 0, size = 50)
+						runCatching { SchedulesApi.getMySchedule(startIndex = 0, size = 50) }.getOrElse { PageResponse(0, 0, 0, emptyList()) }
 					} else {
-						throw e
+						PageResponse(0, 0, 0, emptyList())
 					}
 				}
-				val servicesPage = ServicesApi.getMyServices(startIndex = 0, size = 50)
+
+				val servicesPage = try {
+					ServicesApi.getMyServices(startIndex = 0, size = 50)
+				} catch (e: Exception) {
+					PageResponse(0, 0, 0, emptyList())
+				}
+
 				_state.update {
 					it.copy(
 						schedules = schedulePage.items,
 						services = servicesPage.items,
-						isLoading = false
+						isLoading = false,
+						error = null
 					)
 				}
 			} catch (e: Exception) {
 				Log.e("TutorScheduleVM", "Error loading schedule: ${e.message}", e)
-				_state.update { it.copy(isLoading = false, error = e.message) }
+				_state.update { it.copy(isLoading = false, error = null) }
 			}
 		}
 	}

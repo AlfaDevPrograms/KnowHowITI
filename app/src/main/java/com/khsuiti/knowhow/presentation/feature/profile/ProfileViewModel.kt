@@ -13,7 +13,9 @@ import com.khsuiti.knowhow.data.local.AuthApi
 import com.khsuiti.knowhow.data.local.BookingsApi
 import com.khsuiti.knowhow.data.local.DataStoreKeys
 import com.khsuiti.knowhow.data.local.DataStoreKeys.THEME_MODE_KEY
+import com.khsuiti.knowhow.data.local.EducationApi
 import com.khsuiti.knowhow.data.local.ThemeMode
+import com.khsuiti.knowhow.data.local.UserProfilesApi
 import com.khsuiti.knowhow.data.local.UsersApi
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -27,6 +29,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.io.IOException
+import java.util.UUID
 import javax.inject.Inject
 
 @HiltViewModel
@@ -91,7 +94,7 @@ class ProfileViewModel @Inject constructor(
 
 				val accountInfo = UsersApi.getMyAccount()
 				val role = accountInfo.roleName.lowercase()
-				val isTutor = role.contains("tutor") || role.contains("репетитор") || role.contains("преподаватель")
+				val isTutor = dataStore.data.first()[DataStoreKeys.IS_TUTOR] ?: (role.contains("tutor") || role.contains("репетитор") || role.contains("преподаватель"))
 
 				dataStore.edit { prefs ->
 					prefs[DataStoreKeys.IS_TUTOR] = isTutor
@@ -101,13 +104,30 @@ class ProfileViewModel @Inject constructor(
 				var balance = 0
 				var courses = 0
 
-				try {
-					val bookingsPage = BookingsApi.getMyStudentBookings(startIndex = 0, size = 50)
-					completed = bookingsPage.items.count { b -> b.isClose }
-					balance = bookingsPage.items.count { b -> !b.isClose }
-					courses = bookingsPage.items.mapNotNull { b -> b.service?.idSubject }.distinct().size
-				} catch (e: Exception) {
-					Log.w("ProfileViewModel", "Bookings not found: ${e.message}")
+				if (isTutor) {
+					try {
+						val tutorBookings = BookingsApi.getMyTutorBookings(startIndex = 0, size = 50)
+						completed = tutorBookings.items.count { b -> b.isClose }
+						balance = tutorBookings.items.count { b -> !b.isClose }
+						courses = tutorBookings.items.mapNotNull { b -> b.service?.idSubject }.distinct().size
+					} catch (e: Exception) {
+						if ((e as? ApiException)?.errorCode() == "TutorProfileNotFound") {
+							val eduPage = runCatching { EducationApi.list(startIndex = 0, size = 1) }.getOrNull()
+							val eduId = eduPage?.items?.firstOrNull()?.idEducation?.let { UUID.fromString(it) } ?: UUID.randomUUID()
+							runCatching { UserProfilesApi.postCreateTutorProfile(eduId, 2, "Профессиональный репетитор") }
+						}
+					}
+				} else {
+					try {
+						val studentBookings = BookingsApi.getMyStudentBookings(startIndex = 0, size = 50)
+						completed = studentBookings.items.count { b -> b.isClose }
+						balance = studentBookings.items.count { b -> !b.isClose }
+						courses = studentBookings.items.mapNotNull { b -> b.service?.idSubject }.distinct().size
+					} catch (e: Exception) {
+						if ((e as? ApiException)?.errorCode() == "StudentProfileNotFound") {
+							runCatching { UserProfilesApi.postCreateStudentProfile() }
+						}
+					}
 				}
 
 				_state.update {

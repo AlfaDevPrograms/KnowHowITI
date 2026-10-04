@@ -50,13 +50,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import coil.compose.AsyncImage
 import com.khsuiti.knowhow.R
@@ -169,56 +169,59 @@ fun AppBackground(
 }
 
 @Composable
-fun MainScreen(
-	navController: NavHostController,
-	startDestination: String = BottomNavItem.Home.route,
-	mainViewModel: MainViewModel = hiltViewModel(),
+fun RootAppNavigation(
+	appAuthState: AppAuthState,
+	settingsViewModel: SettingsViewModel,
 	authViewModel: AuthViewModel = hiltViewModel(),
 	homeViewModel: HomeViewModel = hiltViewModel(),
 	catalogViewModel: CatalogViewModel = hiltViewModel(),
 	profileViewModel: ProfileViewModel = hiltViewModel(),
-	settingsViewModel: SettingsViewModel = hiltViewModel(),
 	tutorDetailViewModel: TutorDetailViewModel = hiltViewModel(),
 	tutorServicesViewModel: TutorServicesViewModel = hiltViewModel(),
 	tutorScheduleViewModel: TutorScheduleViewModel = hiltViewModel()
 ) {
-	val isTutor by mainViewModel.isTutor.collectAsStateWithLifecycle()
-
-	val bottomNavItems = if (isTutor) {
-		listOf(
-			BottomNavItem.TutorServices,
-			BottomNavItem.TutorSchedule,
-			BottomNavItem.Profile
+	if (!appAuthState.isAuthenticated) {
+		AuthScreen(
+			viewModel = authViewModel,
+			onAuthSuccess = {}
+		)
+	} else if (appAuthState.isTutor) {
+		TutorMainScreen(
+			settingsViewModel = settingsViewModel,
+			homeViewModel = homeViewModel,
+			profileViewModel = profileViewModel,
+			tutorServicesViewModel = tutorServicesViewModel,
+			tutorScheduleViewModel = tutorScheduleViewModel
 		)
 	} else {
-		listOf(
-			BottomNavItem.Home,
-			BottomNavItem.Catalog,
-			BottomNavItem.Lessons,
-			BottomNavItem.Profile
+		StudentMainScreen(
+			settingsViewModel = settingsViewModel,
+			homeViewModel = homeViewModel,
+			catalogViewModel = catalogViewModel,
+			profileViewModel = profileViewModel,
+			tutorDetailViewModel = tutorDetailViewModel
 		)
 	}
+}
+
+@Composable
+fun StudentMainScreen(
+	settingsViewModel: SettingsViewModel,
+	homeViewModel: HomeViewModel,
+	catalogViewModel: CatalogViewModel,
+	profileViewModel: ProfileViewModel,
+	tutorDetailViewModel: TutorDetailViewModel
+) {
+	val navController = rememberNavController()
+	val bottomNavItems = listOf(
+		BottomNavItem.Home,
+		BottomNavItem.Catalog,
+		BottomNavItem.Lessons,
+		BottomNavItem.Profile
+	)
 
 	val navBackStackEntry by navController.currentBackStackEntryAsState()
-	val currentRoute = navBackStackEntry?.destination?.route
-
-	LaunchedEffect(isTutor, currentRoute) {
-		if (currentRoute != null && currentRoute != "auth") {
-			if (isTutor) {
-				if (currentRoute == BottomNavItem.Home.route || currentRoute == BottomNavItem.Catalog.route || currentRoute == BottomNavItem.Lessons.route) {
-					navController.navigate(BottomNavItem.TutorServices.route) {
-						popUpTo(navController.graph.findStartDestination().id) { inclusive = true }
-					}
-				}
-			} else {
-				if (currentRoute == BottomNavItem.TutorServices.route || currentRoute == BottomNavItem.TutorSchedule.route) {
-					navController.navigate(BottomNavItem.Home.route) {
-						popUpTo(navController.graph.findStartDestination().id) { inclusive = true }
-					}
-				}
-			}
-		}
-	}
+	val currentRoute = navBackStackEntry?.destination?.route ?: BottomNavItem.Home.route
 
 	AppBackground(
 		homeViewModel = homeViewModel,
@@ -227,203 +230,243 @@ fun MainScreen(
 		Scaffold(
 			containerColor = Color.Transparent,
 			bottomBar = {
-				if (currentRoute != "auth") {
-					NavigationBar(
-						containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
-						tonalElevation = 8.dp,
-						modifier = Modifier.clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp))
-					) {
-						bottomNavItems.forEach { item ->
-							val isSelected = currentRoute == item.route
-							NavigationBarItem(
-								selected = isSelected,
-								onClick = {
-									if (currentRoute != item.route) {
-										navController.navigate(item.route) {
-											popUpTo(navController.graph.findStartDestination().id) {
-												saveState = true
-											}
-											launchSingleTop = true
-											restoreState = true
+				NavigationBar(
+					containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
+					tonalElevation = 8.dp,
+					modifier = Modifier.clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp))
+				) {
+					bottomNavItems.forEach { item ->
+						val isSelected = currentRoute == item.route
+						NavigationBarItem(
+							selected = isSelected,
+							onClick = {
+								if (currentRoute != item.route) {
+									navController.navigate(item.route) {
+										popUpTo(navController.graph.findStartDestination().id) {
+											saveState = true
 										}
+										launchSingleTop = true
+										restoreState = true
 									}
-								},
-								icon = {
-									Icon(
-										imageVector = item.icon,
-										contentDescription = stringResource(item.titleRes),
-										modifier = Modifier.size(24.dp)
-									)
-								},
-								label = {
-									Text(
-										text = stringResource(item.titleRes),
-										fontSize = 11.sp,
-										fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
-									)
-								},
-								colors = NavigationBarItemDefaults.colors(
-									selectedIconColor = com.khsuiti.knowhow.presentation.common.ui.theme.color1,
-									selectedTextColor = com.khsuiti.knowhow.presentation.common.ui.theme.color1,
-									indicatorColor = com.khsuiti.knowhow.presentation.common.ui.theme.color2,
-									unselectedIconColor = com.khsuiti.knowhow.presentation.common.ui.theme.color1.copy(alpha = 0.6f),
-									unselectedTextColor = com.khsuiti.knowhow.presentation.common.ui.theme.color1.copy(alpha = 0.6f)
+								}
+							},
+							icon = {
+								Icon(
+									imageVector = item.icon,
+									contentDescription = stringResource(item.titleRes),
+									modifier = Modifier.size(24.dp)
 								)
+							},
+							label = {
+								Text(
+									text = stringResource(item.titleRes),
+									fontSize = 11.sp,
+									fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+								)
+							},
+							colors = NavigationBarItemDefaults.colors(
+								selectedIconColor = com.khsuiti.knowhow.presentation.common.ui.theme.color1,
+								selectedTextColor = com.khsuiti.knowhow.presentation.common.ui.theme.color1,
+								indicatorColor = com.khsuiti.knowhow.presentation.common.ui.theme.color2,
+								unselectedIconColor = com.khsuiti.knowhow.presentation.common.ui.theme.color1.copy(alpha = 0.6f),
+								unselectedTextColor = com.khsuiti.knowhow.presentation.common.ui.theme.color1.copy(alpha = 0.6f)
 							)
-						}
+						)
 					}
 				}
 			}
 		) { innerPadding ->
-			AppNavGraph(
+			NavHost(
 				navController = navController,
-				startDestination = startDestination,
-				isTutor = isTutor,
-				authViewModel = authViewModel,
-				homeViewModel = homeViewModel,
-				catalogViewModel = catalogViewModel,
-				profileViewModel = profileViewModel,
-				settingsViewModel = settingsViewModel,
-				tutorDetailViewModel = tutorDetailViewModel,
-				tutorServicesViewModel = tutorServicesViewModel,
-				tutorScheduleViewModel = tutorScheduleViewModel,
-				modifier = Modifier.padding(bottom = innerPadding.calculateBottomPadding())
-			)
+				startDestination = BottomNavItem.Home.route,
+				modifier = Modifier.padding(bottom = innerPadding.calculateBottomPadding()),
+				enterTransition = { slideInHorizontally(tween(300, easing = EaseOutQuad)) { it } + fadeIn(tween(300)) },
+				exitTransition = { slideOutHorizontally(tween(250, easing = EaseInQuad)) { -it / 3 } + fadeOut(tween(250)) },
+				popEnterTransition = { slideInHorizontally(tween(300, easing = EaseOutQuad)) { -it } + fadeIn(tween(300)) },
+				popExitTransition = { slideOutHorizontally(tween(250, easing = EaseInQuad)) { it / 3 } + fadeOut(tween(250)) }
+			) {
+				composable(BottomNavItem.Home.route) {
+					HomeScreen(
+						viewModel = homeViewModel,
+						onNavigateToTutorDetail = { tutorId ->
+							tutorDetailViewModel.handleIntent(TutorDetailIntent.LoadTutorDetail(tutorId))
+							navController.navigate("tutor_detail/$tutorId")
+						}
+					)
+				}
+
+				composable(BottomNavItem.Catalog.route) {
+					CatalogScreen(
+						viewModel = catalogViewModel,
+						onSelectSubject = { subjectId ->
+							navController.navigate(BottomNavItem.Home.route) {
+								popUpTo(navController.graph.findStartDestination().id) {
+									saveState = true
+								}
+								launchSingleTop = true
+							}
+						}
+					)
+				}
+
+				composable(BottomNavItem.Lessons.route) {
+					LessonsScreen()
+				}
+
+				composable(BottomNavItem.Profile.route) {
+					ProfileScreen(
+						viewModel = profileViewModel,
+						onNavigateToSettings = { navController.navigate("settings") },
+						onNavigateToAbout = { navController.navigate("about") },
+						onLogoutSuccess = {
+							homeViewModel.clearState()
+							catalogViewModel.clearState()
+							profileViewModel.clearState()
+						}
+					)
+				}
+
+				composable(
+					route = "tutor_detail/{tutorId}",
+					arguments = listOf(navArgument("tutorId") { type = NavType.StringType })
+				) {
+					TutorDetailScreen(
+						viewModel = tutorDetailViewModel,
+						onNavigateBack = { navController.popBackStack() }
+					)
+				}
+
+				composable("settings") {
+					SettingsScreen(
+						viewModel = settingsViewModel,
+						onNavigateBack = { navController.popBackStack() }
+					)
+				}
+
+				composable("about") {
+					AboutScreen(
+						onNavigateBack = { navController.popBackStack() }
+					)
+				}
+			}
 		}
 	}
 }
 
 @Composable
-fun AppNavGraph(
-	navController: NavHostController,
-	startDestination: String,
-	isTutor: Boolean,
-	authViewModel: AuthViewModel,
-	homeViewModel: HomeViewModel,
-	catalogViewModel: CatalogViewModel,
-	profileViewModel: ProfileViewModel,
+fun TutorMainScreen(
 	settingsViewModel: SettingsViewModel,
-	tutorDetailViewModel: TutorDetailViewModel,
+	homeViewModel: HomeViewModel,
+	profileViewModel: ProfileViewModel,
 	tutorServicesViewModel: TutorServicesViewModel,
-	tutorScheduleViewModel: TutorScheduleViewModel,
-	modifier: Modifier = Modifier
+	tutorScheduleViewModel: TutorScheduleViewModel
 ) {
-	NavHost(
-		navController = navController,
-		startDestination = startDestination,
-		modifier = modifier,
-		enterTransition = {
-			slideInHorizontally(
-				animationSpec = tween(300, easing = EaseOutQuad),
-				initialOffsetX = { it }
-			) + fadeIn(animationSpec = tween(300))
-		},
-		exitTransition = {
-			slideOutHorizontally(
-				animationSpec = tween(250, easing = EaseInQuad),
-				targetOffsetX = { -it / 3 }
-			) + fadeOut(animationSpec = tween(250))
-		},
-		popEnterTransition = {
-			slideInHorizontally(
-				animationSpec = tween(300, easing = EaseOutQuad),
-				initialOffsetX = { -it }
-			) + fadeIn(animationSpec = tween(300))
-		},
-		popExitTransition = {
-			slideOutHorizontally(
-				animationSpec = tween(250, easing = EaseInQuad),
-				targetOffsetX = { it / 3 }
-			) + fadeOut(animationSpec = tween(250))
-		}
+	val navController = rememberNavController()
+	val bottomNavItems = listOf(
+		BottomNavItem.TutorServices,
+		BottomNavItem.TutorSchedule,
+		BottomNavItem.Profile
+	)
+
+	val navBackStackEntry by navController.currentBackStackEntryAsState()
+	val currentRoute = navBackStackEntry?.destination?.route ?: BottomNavItem.TutorServices.route
+
+	AppBackground(
+		homeViewModel = homeViewModel,
+		settingsViewModel = settingsViewModel
 	) {
-		composable("auth") {
-			AuthScreen(
-				viewModel = authViewModel,
-				onAuthSuccess = {
-					val dest = if (isTutor) BottomNavItem.TutorServices.route else BottomNavItem.Home.route
-					navController.navigate(dest) {
-						popUpTo("auth") { inclusive = true }
+		Scaffold(
+			containerColor = Color.Transparent,
+			bottomBar = {
+				NavigationBar(
+					containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
+					tonalElevation = 8.dp,
+					modifier = Modifier.clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp))
+				) {
+					bottomNavItems.forEach { item ->
+						val isSelected = currentRoute == item.route
+						NavigationBarItem(
+							selected = isSelected,
+							onClick = {
+								if (currentRoute != item.route) {
+									navController.navigate(item.route) {
+										popUpTo(navController.graph.findStartDestination().id) {
+											saveState = true
+										}
+										launchSingleTop = true
+										restoreState = true
+									}
+								}
+							},
+							icon = {
+								Icon(
+									imageVector = item.icon,
+									contentDescription = stringResource(item.titleRes),
+									modifier = Modifier.size(24.dp)
+								)
+							},
+							label = {
+								Text(
+									text = stringResource(item.titleRes),
+									fontSize = 11.sp,
+									fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+								)
+							},
+							colors = NavigationBarItemDefaults.colors(
+								selectedIconColor = com.khsuiti.knowhow.presentation.common.ui.theme.color1,
+								selectedTextColor = com.khsuiti.knowhow.presentation.common.ui.theme.color1,
+								indicatorColor = com.khsuiti.knowhow.presentation.common.ui.theme.color2,
+								unselectedIconColor = com.khsuiti.knowhow.presentation.common.ui.theme.color1.copy(alpha = 0.6f),
+								unselectedTextColor = com.khsuiti.knowhow.presentation.common.ui.theme.color1.copy(alpha = 0.6f)
+							)
+						)
 					}
 				}
-			)
-		}
-
-		composable(BottomNavItem.Home.route) {
-			HomeScreen(
-				viewModel = homeViewModel,
-				onNavigateToTutorDetail = { tutorId ->
-					tutorDetailViewModel.handleIntent(TutorDetailIntent.LoadTutorDetail(tutorId))
-					navController.navigate("tutor_detail/$tutorId")
+			}
+		) { innerPadding ->
+			NavHost(
+				navController = navController,
+				startDestination = BottomNavItem.TutorServices.route,
+				modifier = Modifier.padding(bottom = innerPadding.calculateBottomPadding()),
+				enterTransition = { slideInHorizontally(tween(300, easing = EaseOutQuad)) { it } + fadeIn(tween(300)) },
+				exitTransition = { slideOutHorizontally(tween(250, easing = EaseInQuad)) { -it / 3 } + fadeOut(tween(250)) },
+				popEnterTransition = { slideInHorizontally(tween(300, easing = EaseOutQuad)) { -it } + fadeIn(tween(300)) },
+				popExitTransition = { slideOutHorizontally(tween(250, easing = EaseInQuad)) { it / 3 } + fadeOut(tween(250)) }
+			) {
+				composable(BottomNavItem.TutorServices.route) {
+					TutorServicesScreen(viewModel = tutorServicesViewModel)
 				}
-			)
-		}
 
-		composable(BottomNavItem.Catalog.route) {
-			CatalogScreen(
-				viewModel = catalogViewModel,
-				onSelectSubject = { subjectId ->
-					navController.navigate(BottomNavItem.Home.route) {
-						popUpTo(navController.graph.findStartDestination().id) {
-							saveState = true
+				composable(BottomNavItem.TutorSchedule.route) {
+					TutorScheduleScreen(viewModel = tutorScheduleViewModel)
+				}
+
+				composable(BottomNavItem.Profile.route) {
+					ProfileScreen(
+						viewModel = profileViewModel,
+						onNavigateToSettings = { navController.navigate("settings") },
+						onNavigateToAbout = { navController.navigate("about") },
+						onLogoutSuccess = {
+							profileViewModel.clearState()
+							tutorServicesViewModel.clearState()
+							tutorScheduleViewModel.clearState()
 						}
-						launchSingleTop = true
-					}
+					)
 				}
-			)
-		}
 
-		composable(BottomNavItem.Lessons.route) {
-			LessonsScreen()
-		}
-
-		composable(BottomNavItem.TutorServices.route) {
-			TutorServicesScreen(viewModel = tutorServicesViewModel)
-		}
-
-		composable(BottomNavItem.TutorSchedule.route) {
-			TutorScheduleScreen(viewModel = tutorScheduleViewModel)
-		}
-
-		composable(BottomNavItem.Profile.route) {
-			ProfileScreen(
-				viewModel = profileViewModel,
-				onNavigateToSettings = { navController.navigate("settings") },
-				onNavigateToAbout = { navController.navigate("about") },
-				onLogoutSuccess = {
-					homeViewModel.clearState()
-					catalogViewModel.clearState()
-					profileViewModel.clearState()
-					tutorServicesViewModel.clearState()
-					tutorScheduleViewModel.clearState()
-					navController.navigate("auth") {
-						popUpTo(0) { inclusive = true }
-					}
+				composable("settings") {
+					SettingsScreen(
+						viewModel = settingsViewModel,
+						onNavigateBack = { navController.popBackStack() }
+					)
 				}
-			)
-		}
 
-		composable(
-			route = "tutor_detail/{tutorId}",
-			arguments = listOf(navArgument("tutorId") { type = NavType.StringType })
-		) {
-			TutorDetailScreen(
-				viewModel = tutorDetailViewModel,
-				onNavigateBack = { navController.popBackStack() }
-			)
-		}
-
-		composable("settings") {
-			SettingsScreen(
-				viewModel = settingsViewModel,
-				onNavigateBack = { navController.popBackStack() }
-			)
-		}
-
-		composable("about") {
-			AboutScreen(
-				onNavigateBack = { navController.popBackStack() }
-			)
+				composable("about") {
+					AboutScreen(
+						onNavigateBack = { navController.popBackStack() }
+					)
+				}
+			}
 		}
 	}
 }

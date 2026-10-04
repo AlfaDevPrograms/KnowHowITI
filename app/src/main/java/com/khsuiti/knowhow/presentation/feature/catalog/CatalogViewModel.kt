@@ -11,6 +11,8 @@ import com.khsuiti.knowhow.data.local.ApiException
 import com.khsuiti.knowhow.data.local.DataStoreKeys.THEME_MODE_KEY
 import com.khsuiti.knowhow.data.local.ServicesApi
 import com.khsuiti.knowhow.data.local.ThemeMode
+import com.khsuiti.knowhow.data.local.UserProfilesApi
+import com.khsuiti.knowhow.responsesData.ServiceResponse
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -22,6 +24,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.io.IOException
+import java.util.UUID
 import javax.inject.Inject
 
 @HiltViewModel
@@ -76,8 +79,22 @@ class CatalogViewModel @Inject constructor(
 		_state.update { it.copy(isLoading = true, error = null) }
 		viewModelScope.launch {
 			try {
-				val servicePage = ServicesApi.getServices(startIndex = 0, size = 50)
-				val mappedItems = servicePage.items.map { service ->
+				val allServices = ArrayList<ServiceResponse>()
+				val publicServices = runCatching { ServicesApi.getServices(startIndex = 0, size = 50).items }.getOrDefault(emptyList())
+				allServices.addAll(publicServices)
+
+				val allTutors = runCatching { UserProfilesApi.getAllTutorProfiles(startIndex = 0, size = 50).items }.getOrDefault(emptyList())
+				for (tutor in allTutors) {
+					val uuid = runCatching { UUID.fromString(tutor.idTutorProfile) }.getOrNull()
+					if (uuid != null) {
+						val tutorServices = runCatching { ServicesApi.getServices(tutorId = uuid, startIndex = 0, size = 50).items }.getOrDefault(emptyList())
+						allServices.addAll(tutorServices)
+					}
+				}
+
+				val distinctServices = allServices.distinctBy { it.idService }
+
+				val mappedItems = distinctServices.map { service ->
 					SubjectCatalogItem(
 						service = service,
 						subjectName = service.subjectName,
