@@ -6,14 +6,12 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.khsuiti.knowhow.data.local.AdminApi
 import com.khsuiti.knowhow.data.local.AdminHelper
 import com.khsuiti.knowhow.data.local.ApiClient
 import com.khsuiti.knowhow.data.local.AuthApi
 import com.khsuiti.knowhow.data.local.DataStoreKeys
 import com.khsuiti.knowhow.data.local.EducationApi
 import com.khsuiti.knowhow.data.local.UserProfilesApi
-import com.khsuiti.knowhow.data.local.UsersApi
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -66,38 +64,8 @@ class AuthViewModel @Inject constructor(
 					)
 					ApiClient.setTokens(result.accessToken, result.refreshToken)
 
-					val isTutorProfile = runCatching { UserProfilesApi.getMyTutorProfile() }.isSuccess
-					val isStudentProfile = runCatching { UserProfilesApi.getMyStudentProfile() }.isSuccess
-
-					val isTutor = if (isTutorProfile) {
-						true
-					} else if (isStudentProfile) {
-						false
-					} else {
-						val accountInfo = runCatching { UsersApi.getMyAccount() }.getOrNull()
-						val roleName = accountInfo?.roleName.orEmpty().lowercase()
-						roleName.contains("репетитор") || roleName.contains("tutor") || roleName.contains("преподаватель")
-					}
-
-					if (isTutor) {
-						val tutorProfile = runCatching { UserProfilesApi.getMyTutorProfile() }.getOrNull()
-						if (tutorProfile != null) {
-							val tutorUuid = runCatching { UUID.fromString(tutorProfile.idTutorProfile) }.getOrNull()
-							if (tutorUuid != null && !tutorProfile.isVerified) {
-								AdminHelper.verifyTutorProfile(tutorUuid)
-								runCatching { AdminApi.verifyTutorProfile(tutorUuid, true) }
-							}
-						} else {
-							val eduPage = runCatching { EducationApi.list(startIndex = 0, size = 1) }.getOrNull()
-							val eduId = eduPage?.items?.firstOrNull()?.idEducation?.let { UUID.fromString(it) } ?: UUID.randomUUID()
-							val profile = runCatching { UserProfilesApi.postCreateTutorProfile(eduId, 2, "Профессиональный репетитор") }.getOrNull()
-							val tutorUuid = profile?.idTutorProfile?.let { runCatching { UUID.fromString(it) }.getOrNull() }
-							if (tutorUuid != null) {
-								AdminHelper.verifyTutorProfile(tutorUuid)
-								runCatching { AdminApi.verifyTutorProfile(tutorUuid, true) }
-							}
-						}
-					}
+					// Login mode: Check if tutor profile exists. DO NOT activate or create profiles on login!
+					val isTutor = runCatching { UserProfilesApi.getMyTutorProfile() }.isSuccess
 
 					dataStore.edit { prefs ->
 						prefs[DataStoreKeys.ACCESS_TOKEN] = result.accessToken
@@ -133,6 +101,7 @@ class AuthViewModel @Inject constructor(
 					)
 					ApiClient.setTokens(result.accessToken, result.refreshToken)
 
+					// Registration mode: Activate ONLY once upon initial tutor registration
 					val isTutor = currentState.isTutor
 					if (isTutor) {
 						val eduPage = runCatching { EducationApi.list(startIndex = 0, size = 1) }.getOrNull()
@@ -145,7 +114,6 @@ class AuthViewModel @Inject constructor(
 						val tutorUuid = runCatching { UUID.fromString(profile.idTutorProfile) }.getOrNull()
 						if (tutorUuid != null) {
 							AdminHelper.verifyTutorProfile(tutorUuid)
-							runCatching { AdminApi.verifyTutorProfile(tutorUuid, true) }
 						}
 					} else {
 						UserProfilesApi.postCreateStudentProfile()

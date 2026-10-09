@@ -38,6 +38,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -67,6 +68,19 @@ fun TutorDetailScreen(
 	val context = LocalContext.current
 	val bookingSuccessMessage = stringResource(R.string.booking_success)
 	val shareMessage = stringResource(R.string.share)
+
+	state.error?.let { err ->
+		LaunchedEffect(err) {
+			Toast.makeText(context, err, Toast.LENGTH_LONG).show()
+		}
+	}
+
+	LaunchedEffect(state.bookingSuccess) {
+		if (state.bookingSuccess) {
+			Toast.makeText(context, bookingSuccessMessage, Toast.LENGTH_SHORT).show()
+			onNavigateBack()
+		}
+	}
 
 	Scaffold(
 		containerColor = Color.Transparent
@@ -291,33 +305,41 @@ fun TutorDetailScreen(
 						Spacer(modifier = Modifier.height(12.dp))
 
 						// Days Chips Row
-						Row(
-							modifier = Modifier.fillMaxWidth(),
-							horizontalArrangement = Arrangement.SpaceBetween
-						) {
-							state.availableDays.forEach { (dayName, dayNum) ->
-								val dateKey = "$dayName $dayNum"
-								val isSelected = dateKey == state.selectedDay
-								Box(
-									modifier = Modifier
-										.size(width = 54.dp, height = 64.dp)
-										.clip(RoundedCornerShape(16.dp))
-										.background(if (isSelected) MaterialTheme.colorScheme.secondary else Color(0xFFF1F5F9))
-										.clickable { viewModel.handleIntent(TutorDetailIntent.SelectDate(dateKey)) },
-									contentAlignment = Alignment.Center
-								) {
-									Column(horizontalAlignment = Alignment.CenterHorizontally) {
-										Text(
-											text = dayName,
-											style = MaterialTheme.typography.labelMedium,
-											color = if (isSelected) Color.White else Color.Gray
-										)
-										Spacer(modifier = Modifier.height(2.dp))
-										Text(
-											text = dayNum,
-											style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-											color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurface
-										)
+						if (state.availableDays.isEmpty()) {
+							Text(
+								text = "Нет доступных дат",
+								style = MaterialTheme.typography.bodyMedium,
+								color = Color.Gray
+							)
+						} else {
+							Row(
+								modifier = Modifier.fillMaxWidth(),
+								horizontalArrangement = Arrangement.SpaceBetween
+							) {
+								state.availableDays.forEach { (dayName, dayNum) ->
+									val dateKey = "$dayName $dayNum"
+									val isSelected = dateKey == state.selectedDay
+									Box(
+										modifier = Modifier
+											.size(width = 54.dp, height = 64.dp)
+											.clip(RoundedCornerShape(16.dp))
+											.background(if (isSelected) MaterialTheme.colorScheme.secondary else Color(0xFFF1F5F9))
+											.clickable { viewModel.handleIntent(TutorDetailIntent.SelectDate(dateKey)) },
+										contentAlignment = Alignment.Center
+									) {
+										Column(horizontalAlignment = Alignment.CenterHorizontally) {
+											Text(
+												text = dayName,
+												style = MaterialTheme.typography.labelMedium,
+												color = if (isSelected) Color.White else Color.Gray
+											)
+											Spacer(modifier = Modifier.height(2.dp))
+											Text(
+												text = dayNum,
+												style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+												color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurface
+											)
+										}
 									}
 								}
 							}
@@ -325,25 +347,48 @@ fun TutorDetailScreen(
 
 						Spacer(modifier = Modifier.height(16.dp))
 
-						// Time Slots Row
-						FlowRow(
-							horizontalArrangement = Arrangement.spacedBy(10.dp),
-							verticalArrangement = Arrangement.spacedBy(10.dp)
-						) {
-							state.availableTimeSlots.forEach { slot ->
-								val isSelected = slot == state.selectedTimeSlot
-								Box(
-									modifier = Modifier
-										.clip(RoundedCornerShape(16.dp))
-										.background(if (isSelected) MaterialTheme.colorScheme.secondary else Color(0xFFF1F5F9))
-										.clickable { viewModel.handleIntent(TutorDetailIntent.SelectTimeSlot(slot)) }
-										.padding(horizontal = 16.dp, vertical = 10.dp)
-								) {
-									Text(
-										text = slot,
-										style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
-										color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurface
-									)
+						// Time Slots Row filtered by selectedDay
+						val timeFormat = java.time.format.DateTimeFormatter.ofPattern("HH:mm")
+						val selectedDaySchedules = state.availableSchedules.filter { schedule ->
+							parseScheduleDateTime(schedule.startTime)?.let { dt ->
+								val dayFormat = java.time.format.DateTimeFormatter.ofPattern("E", java.util.Locale.forLanguageTag("ru"))
+								val dayNumFormat = java.time.format.DateTimeFormatter.ofPattern("d")
+								val dayName = dt.format(dayFormat).replaceFirstChar { it.uppercase() }
+								val dayNum = dt.format(dayNumFormat)
+								"$dayName $dayNum" == state.selectedDay
+							} == true
+						}
+
+						if (selectedDaySchedules.isEmpty()) {
+							Text(
+								text = "Нет доступных слотов на выбранную дату",
+								style = MaterialTheme.typography.bodyMedium,
+								color = Color.Gray
+							)
+						} else {
+							FlowRow(
+								horizontalArrangement = Arrangement.spacedBy(10.dp),
+								verticalArrangement = Arrangement.spacedBy(10.dp)
+							) {
+								selectedDaySchedules.forEach { schedule ->
+									val dt = parseScheduleDateTime(schedule.startTime)
+									val timeText = dt?.format(timeFormat) ?: schedule.startTime
+									val isSelected = schedule.idSchedule == state.selectedScheduleId
+									Box(
+										modifier = Modifier
+											.clip(RoundedCornerShape(16.dp))
+											.background(if (isSelected) MaterialTheme.colorScheme.secondary else Color(0xFFF1F5F9))
+											.clickable {
+												viewModel.handleIntent(TutorDetailIntent.SelectScheduleSlot(schedule.idSchedule, timeText))
+											}
+											.padding(horizontal = 16.dp, vertical = 10.dp)
+									) {
+										Text(
+											text = timeText,
+											style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+											color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurface
+										)
+									}
 								}
 							}
 						}
@@ -455,13 +500,17 @@ fun TutorDetailScreen(
 				Spacer(modifier = Modifier.height(24.dp))
 
 				// Bottom Actions
+				val canBook = state.availableSchedules.isNotEmpty() && !state.selectedScheduleId.isNullOrBlank()
 				Button(
 					onClick = {
 						viewModel.handleIntent(TutorDetailIntent.ConfirmBooking)
-						Toast.makeText(context, bookingSuccessMessage, Toast.LENGTH_SHORT).show()
 					},
+					enabled = canBook,
 					shape = RoundedCornerShape(16.dp),
-					colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00A86B)),
+					colors = ButtonDefaults.buttonColors(
+						containerColor = Color(0xFF00A86B),
+						disabledContainerColor = Color.Gray.copy(alpha = 0.4f)
+					),
 					modifier = Modifier
 						.fillMaxWidth()
 						.height(52.dp)

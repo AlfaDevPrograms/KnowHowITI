@@ -67,6 +67,8 @@ import com.khsuiti.knowhow.presentation.feature.catalog.CatalogScreen
 import com.khsuiti.knowhow.presentation.feature.catalog.CatalogViewModel
 import com.khsuiti.knowhow.presentation.feature.home.HomeScreen
 import com.khsuiti.knowhow.presentation.feature.home.HomeViewModel
+import com.khsuiti.knowhow.presentation.feature.lessons.LessonsScreen
+import com.khsuiti.knowhow.presentation.feature.lessons.LessonsViewModel
 import com.khsuiti.knowhow.presentation.feature.profile.ProfileScreen
 import com.khsuiti.knowhow.presentation.feature.profile.ProfileViewModel
 import com.khsuiti.knowhow.presentation.feature.settings.SettingsScreen
@@ -178,7 +180,8 @@ fun RootAppNavigation(
 	profileViewModel: ProfileViewModel = hiltViewModel(),
 	tutorDetailViewModel: TutorDetailViewModel = hiltViewModel(),
 	tutorServicesViewModel: TutorServicesViewModel = hiltViewModel(),
-	tutorScheduleViewModel: TutorScheduleViewModel = hiltViewModel()
+	tutorScheduleViewModel: TutorScheduleViewModel = hiltViewModel(),
+	lessonsViewModel: LessonsViewModel = hiltViewModel()
 ) {
 	if (!appAuthState.isAuthenticated) {
 		AuthScreen(
@@ -199,7 +202,8 @@ fun RootAppNavigation(
 			homeViewModel = homeViewModel,
 			catalogViewModel = catalogViewModel,
 			profileViewModel = profileViewModel,
-			tutorDetailViewModel = tutorDetailViewModel
+			tutorDetailViewModel = tutorDetailViewModel,
+			lessonsViewModel = lessonsViewModel
 		)
 	}
 }
@@ -210,7 +214,8 @@ fun StudentMainScreen(
 	homeViewModel: HomeViewModel,
 	catalogViewModel: CatalogViewModel,
 	profileViewModel: ProfileViewModel,
-	tutorDetailViewModel: TutorDetailViewModel
+	tutorDetailViewModel: TutorDetailViewModel,
+	lessonsViewModel: LessonsViewModel = hiltViewModel()
 ) {
 	val navController = rememberNavController()
 	val bottomNavItems = listOf(
@@ -298,19 +303,15 @@ fun StudentMainScreen(
 				composable(BottomNavItem.Catalog.route) {
 					CatalogScreen(
 						viewModel = catalogViewModel,
-						onSelectSubject = { subjectId ->
-							navController.navigate(BottomNavItem.Home.route) {
-								popUpTo(navController.graph.findStartDestination().id) {
-									saveState = true
-								}
-								launchSingleTop = true
-							}
+						onSelectSubject = { serviceId ->
+							tutorDetailViewModel.handleIntent(TutorDetailIntent.LoadServiceDetail(serviceId))
+							navController.navigate("tutor_detail/$serviceId")
 						}
 					)
 				}
 
 				composable(BottomNavItem.Lessons.route) {
-					LessonsScreen()
+					LessonsScreen(viewModel = lessonsViewModel)
 				}
 
 				composable(BottomNavItem.Profile.route) {
@@ -322,6 +323,7 @@ fun StudentMainScreen(
 							homeViewModel.clearState()
 							catalogViewModel.clearState()
 							profileViewModel.clearState()
+							lessonsViewModel.clearState()
 						}
 					)
 				}
@@ -467,35 +469,6 @@ fun TutorMainScreen(
 					)
 				}
 			}
-		}
-	}
-}
-
-@Composable
-fun LessonsScreen() {
-	Box(
-		modifier = Modifier.fillMaxSize(),
-		contentAlignment = Alignment.Center
-	) {
-		Column(horizontalAlignment = Alignment.CenterHorizontally) {
-			Icon(
-				imageVector = Icons.Rounded.CalendarMonth,
-				contentDescription = null,
-				modifier = Modifier.size(64.dp),
-				tint = Color(0xFF1E90FF)
-			)
-			Spacer(modifier = Modifier.height(16.dp))
-			Text(
-				text = stringResource(R.string.lessons_title),
-				style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-				color = MaterialTheme.colorScheme.onBackground
-			)
-			Spacer(modifier = Modifier.height(8.dp))
-			Text(
-				text = stringResource(R.string.no_lessons),
-				style = MaterialTheme.typography.bodyMedium,
-				color = Color.Gray
-			)
 		}
 	}
 }

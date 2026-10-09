@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.khsuiti.knowhow.data.local.ApiClient
 import com.khsuiti.knowhow.data.local.DataStoreKeys
 import com.khsuiti.knowhow.data.local.EducationApi
 import com.khsuiti.knowhow.data.local.ServicesApi
@@ -48,6 +49,7 @@ class TutorServicesViewModel @Inject constructor(
 	}
 
 	fun loadSubjects() {
+		if (ApiClient.accessToken.isNullOrBlank()) return
 		viewModelScope.launch {
 			try {
 				val page = SubjectsApi.list(startIndex = 0, size = 100)
@@ -59,6 +61,7 @@ class TutorServicesViewModel @Inject constructor(
 	}
 
 	fun loadData() {
+		if (ApiClient.accessToken.isNullOrBlank()) return
 		_state.update { it.copy(isLoading = true, error = null) }
 		viewModelScope.launch {
 			try {

@@ -3,11 +3,14 @@ package com.khsuiti.knowhow.presentation.feature.catalog
 import android.util.Log
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.khsuiti.knowhow.data.local.ApiClient
 import com.khsuiti.knowhow.data.local.ApiException
+import com.khsuiti.knowhow.data.local.DataStoreKeys
 import com.khsuiti.knowhow.data.local.DataStoreKeys.THEME_MODE_KEY
 import com.khsuiti.knowhow.data.local.ServicesApi
 import com.khsuiti.knowhow.data.local.SubjectsApi
@@ -125,6 +128,14 @@ class CatalogViewModel @Inject constructor(
 				}
 			} catch (e: ApiException) {
 				Log.e("CatalogViewModel", "API Exception: ${e.code} ${e.errorMessage()}", e)
+				if (e.code == 401) {
+					ApiClient.clearTokens()
+					dataStore.edit { prefs ->
+						prefs.remove(DataStoreKeys.ACCESS_TOKEN)
+						prefs.remove(DataStoreKeys.REFRESH_TOKEN)
+						prefs.remove(DataStoreKeys.IS_TUTOR)
+					}
+				}
 				_state.update {
 					it.copy(
 						isLoading = false,

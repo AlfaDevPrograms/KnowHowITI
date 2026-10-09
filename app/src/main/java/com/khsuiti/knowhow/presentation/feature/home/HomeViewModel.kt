@@ -11,13 +11,11 @@ import androidx.datastore.preferences.core.emptyPreferences
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.khsuiti.knowhow.data.local.AdminApi
-import com.khsuiti.knowhow.data.local.AdminHelper
 import com.khsuiti.knowhow.data.local.ApiClient
 import com.khsuiti.knowhow.data.local.ApiException
 import com.khsuiti.knowhow.data.local.DataStoreKeys
 import com.khsuiti.knowhow.data.local.DataStoreKeys.THEME_MODE_KEY
 import com.khsuiti.knowhow.data.local.ServicesApi
-import com.khsuiti.knowhow.data.local.SubjectsApi
 import com.khsuiti.knowhow.data.local.ThemeMode
 import com.khsuiti.knowhow.data.local.UserProfilesApi
 import com.khsuiti.knowhow.data.repository.PicturesRepository
@@ -131,15 +129,6 @@ class HomeViewModel @Inject constructor(
 		_state.update { it.copy(isLoading = true, error = null) }
 		viewModelScope.launch {
 			try {
-				runCatching { AdminHelper.verifyAllUnverifiedTutors() }
-
-				val apiSubjectsPage = runCatching { SubjectsApi.list(startIndex = 0, size = 100) }.getOrNull()
-				val subjectsFilter = if (apiSubjectsPage != null && apiSubjectsPage.items.isNotEmpty()) {
-					listOf("Все эксперты") + apiSubjectsPage.items.map { it.name }.distinct()
-				} else {
-					_state.value.popularSubjects
-				}
-
 				val userTutorsPage = runCatching { UserProfilesApi.getAllTutorProfiles(startIndex = 0, size = 50).items }.getOrDefault(emptyList())
 				val adminTutorsPage = runCatching { AdminApi.getTutorProfiles(startIndex = 0, size = 50).items }.getOrDefault(emptyList())
 
@@ -165,12 +154,19 @@ class HomeViewModel @Inject constructor(
 					it.copy(
 						tutors = allTutors,
 						services = distinctServices,
-						popularSubjects = subjectsFilter,
 						isLoading = false
 					)
 				}
 			} catch (e: ApiException) {
 				Log.e("HomeViewModel", "API Exception: ${e.code} ${e.errorMessage()}", e)
+				if (e.code == 401) {
+					ApiClient.clearTokens()
+					dataStore.edit { prefs ->
+						prefs.remove(DataStoreKeys.ACCESS_TOKEN)
+						prefs.remove(DataStoreKeys.REFRESH_TOKEN)
+						prefs.remove(DataStoreKeys.IS_TUTOR)
+					}
+				}
 				_state.update {
 					it.copy(
 						isLoading = false,

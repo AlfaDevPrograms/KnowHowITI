@@ -15,7 +15,6 @@ import com.khsuiti.knowhow.data.local.AuthApi
 import com.khsuiti.knowhow.data.local.BookingsApi
 import com.khsuiti.knowhow.data.local.DataStoreKeys
 import com.khsuiti.knowhow.data.local.DataStoreKeys.THEME_MODE_KEY
-import com.khsuiti.knowhow.data.local.EducationApi
 import com.khsuiti.knowhow.data.local.ThemeMode
 import com.khsuiti.knowhow.data.local.UserProfilesApi
 import com.khsuiti.knowhow.data.local.UsersApi
@@ -134,8 +133,8 @@ class ProfileViewModel @Inject constructor(
 				}
 
 				val accountInfo = UsersApi.getMyAccount()
-				val role = accountInfo.roleName.lowercase()
-				val isTutor = dataStore.data.first()[DataStoreKeys.IS_TUTOR] ?: (role.contains("tutor") || role.contains("репетитор") || role.contains("преподаватель"))
+				val savedIsTutor = dataStore.data.first()[DataStoreKeys.IS_TUTOR]
+				val isTutor = savedIsTutor ?: runCatching { UserProfilesApi.getMyTutorProfile() }.isSuccess
 
 				dataStore.edit { prefs ->
 					prefs[DataStoreKeys.IS_TUTOR] = isTutor
@@ -155,11 +154,7 @@ class ProfileViewModel @Inject constructor(
 						balance = tutorBookings.items.count { b -> !b.isClose }
 						courses = tutorBookings.items.mapNotNull { b -> b.service?.idSubject }.distinct().size
 					} catch (e: Exception) {
-						if ((e as? ApiException)?.errorCode() == "TutorProfileNotFound") {
-							val eduPage = runCatching { EducationApi.list(startIndex = 0, size = 1) }.getOrNull()
-							val eduId = eduPage?.items?.firstOrNull()?.idEducation?.let { UUID.fromString(it) } ?: UUID.randomUUID()
-							runCatching { UserProfilesApi.postCreateTutorProfile(eduId, 2, "Профессиональный репетитор") }
-						}
+						Log.e("ProfileViewModel", "Error loading tutor data: ${e.message}")
 					}
 				} else {
 					try {
@@ -168,9 +163,7 @@ class ProfileViewModel @Inject constructor(
 						balance = studentBookings.items.count { b -> !b.isClose }
 						courses = studentBookings.items.mapNotNull { b -> b.service?.idSubject }.distinct().size
 					} catch (e: Exception) {
-						if ((e as? ApiException)?.errorCode() == "StudentProfileNotFound") {
-							runCatching { UserProfilesApi.postCreateStudentProfile() }
-						}
+						Log.e("ProfileViewModel", "Error loading student data: ${e.message}")
 					}
 				}
 
@@ -187,6 +180,14 @@ class ProfileViewModel @Inject constructor(
 				}
 			} catch (e: ApiException) {
 				Log.e("ProfileViewModel", "API Exception: ${e.code} ${e.errorMessage()}", e)
+				if (e.code == 401) {
+					ApiClient.clearTokens()
+					dataStore.edit { prefs ->
+						prefs.remove(DataStoreKeys.ACCESS_TOKEN)
+						prefs.remove(DataStoreKeys.REFRESH_TOKEN)
+						prefs.remove(DataStoreKeys.IS_TUTOR)
+					}
+				}
 				_state.update {
 					it.copy(
 						isLoading = false,

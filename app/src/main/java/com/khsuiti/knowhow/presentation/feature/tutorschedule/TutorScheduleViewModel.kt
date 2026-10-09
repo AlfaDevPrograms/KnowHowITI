@@ -5,10 +5,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.khsuiti.knowhow.data.local.ApiClient
 import com.khsuiti.knowhow.data.local.ApiException
-import com.khsuiti.knowhow.data.local.EducationApi
+import com.khsuiti.knowhow.data.local.BookingsApi
 import com.khsuiti.knowhow.data.local.SchedulesApi
 import com.khsuiti.knowhow.data.local.ServicesApi
 import com.khsuiti.knowhow.data.local.UserProfilesApi
+import com.khsuiti.knowhow.responsesData.BookingResponse
 import com.khsuiti.knowhow.responsesData.PageResponse
 import com.khsuiti.knowhow.responsesData.ScheduleResponse
 import com.khsuiti.knowhow.responsesData.ServiceResponse
@@ -23,6 +24,7 @@ import javax.inject.Inject
 
 data class TutorScheduleState(
 	val schedules: List<ScheduleResponse> = emptyList(),
+	val bookings: List<BookingResponse> = emptyList(),
 	val services: List<ServiceResponse> = emptyList(),
 	val isLoading: Boolean = false,
 	val error: String? = null
@@ -47,17 +49,12 @@ class TutorScheduleViewModel @Inject constructor() : ViewModel() {
 		_state.update { it.copy(isLoading = true, error = null) }
 		viewModelScope.launch {
 			try {
+				val tutorBookingsPage = runCatching { BookingsApi.getMyTutorBookings(startIndex = 0, size = 50).items }.getOrDefault(emptyList())
+
 				val schedulePage = try {
 					SchedulesApi.getMySchedule(startIndex = 0, size = 50)
 				} catch (e: ApiException) {
-					if (e.errorCode() == "TutorProfileNotFound") {
-						val eduPage = runCatching { EducationApi.list(startIndex = 0, size = 1) }.getOrNull()
-						val eduId = eduPage?.items?.firstOrNull()?.idEducation?.let { UUID.fromString(it) } ?: UUID.randomUUID()
-						runCatching { UserProfilesApi.postCreateTutorProfile(eduId, 2, "Профессиональный репетитор") }
-						runCatching { SchedulesApi.getMySchedule(startIndex = 0, size = 50) }.getOrElse { PageResponse(0, 0, 0, emptyList()) }
-					} else {
-						PageResponse(0, 0, 0, emptyList())
-					}
+					PageResponse(0, 0, 0, emptyList())
 				}
 
 				val servicesPage = try {
@@ -69,6 +66,7 @@ class TutorScheduleViewModel @Inject constructor() : ViewModel() {
 				_state.update {
 					it.copy(
 						schedules = schedulePage.items,
+						bookings = tutorBookingsPage,
 						services = servicesPage.items,
 						isLoading = false,
 						error = null
@@ -87,12 +85,53 @@ class TutorScheduleViewModel @Inject constructor() : ViewModel() {
 				SchedulesApi.postSchedule(idService, startTimeIso)
 				loadSchedule()
 			} catch (e: ApiException) {
-				val msg = if (e.errorCode() == "TutorNotVerified" || e.code == 403) {
-					"Профиль репетитора ожидает подтверждения администратором"
-				} else {
-					e.errorMessage() ?: e.message
-				}
-				_state.update { it.copy(error = msg) }
+				_state.update { it.copy(error = e.errorMessage() ?: e.message) }
+			} catch (e: Exception) {
+				_state.update { it.copy(error = e.message) }
+			}
+		}
+	}
+
+	fun updateScheduleSlot(idSchedule: UUID, idService: UUID, startTimeIso: String) {
+		viewModelScope.launch {
+			try {
+				SchedulesApi.putSchedule(idSchedule, idService, startTimeIso)
+				loadSchedule()
+			} catch (e: ApiException) {
+				_state.update { it.copy(error = e.errorMessage() ?: e.message) }
+			} catch (e: Exception) {
+				_state.update { it.copy(error = e.message) }
+			}
+		}
+	}
+
+	fun deleteScheduleSlot(idSchedule: UUID) {
+		viewModelScope.launch {
+			try {
+				SchedulesApi.deleteSchedule(idSchedule)
+				loadSchedule()
+			} catch (e: Exception) {
+				_state.update { it.copy(error = e.message) }
+			}
+		}
+	}
+
+	fun closeBooking(idBooking: UUID) {
+		viewModelScope.launch {
+			try {
+				BookingsApi.closeBooking(idBooking)
+				loadSchedule()
+			} catch (e: Exception) {
+				_state.update { it.copy(error = e.message) }
+			}
+		}
+	}
+
+	fun deleteBooking(idBooking: UUID) {
+		viewModelScope.launch {
+			try {
+				BookingsApi.deleteBooking(idBooking)
+				loadSchedule()
 			} catch (e: Exception) {
 				_state.update { it.copy(error = e.message) }
 			}

@@ -40,6 +40,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -74,6 +75,10 @@ fun CatalogScreen(
 		ThemeMode.System -> systemDark
 		ThemeMode.Light  -> false
 		ThemeMode.Dark   -> true
+	}
+
+	LaunchedEffect(Unit) {
+		viewModel.handleIntent(CatalogIntent.LoadCatalog)
 	}
 	Scaffold(
 		containerColor = Color.Transparent
@@ -199,7 +204,7 @@ fun CatalogScreen(
 				items(filteredSubjects) { item ->
 					SubjectCardItem(
 						item = item,
-						onClick = { onSelectSubject(item.service.idSubject) },
+						onClick = { onSelectSubject(item.service.idService) },
 						isDark = isDark
 					)
 				}

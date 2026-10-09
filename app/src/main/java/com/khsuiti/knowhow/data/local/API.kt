@@ -32,7 +32,13 @@ class ApiException(
         j.optString("detail").ifBlank { null }
             ?: j.optString("message").ifBlank { null }
             ?: j.optString("title").ifBlank { null }
-    }.getOrNull()
+    }.getOrNull() ?: if (body.isNotBlank()) body else when (code) {
+        401 -> "Требуется авторизация"
+        403 -> "Доступ запрещен"
+        404 -> "Не найдено"
+        500 -> "Ошибка сервера"
+        else -> null
+    }
 }
 
 // =========================================================================
@@ -42,6 +48,10 @@ class ApiException(
 class TokenAuthenticator : okhttp3.Authenticator {
     override fun authenticate(route: okhttp3.Route?, response: okhttp3.Response): okhttp3.Request? {
         if (response.code == 401) {
+            if (response.request.url.encodedPath.contains("/Auth/PostRefresh")) {
+                ApiClient.clearTokens()
+                return null
+            }
             return runCatching {
                 val at = ApiClient.accessToken
                 val rt = ApiClient.refreshToken
@@ -60,10 +70,12 @@ class TokenAuthenticator : okhttp3.Authenticator {
                                 .header("Authorization", "Bearer $newAccess")
                                 .build()
                         } else {
+                            ApiClient.clearTokens()
                             null
                         }
                     }
                 } else {
+                    ApiClient.clearTokens()
                     null
                 }
             }.getOrNull()

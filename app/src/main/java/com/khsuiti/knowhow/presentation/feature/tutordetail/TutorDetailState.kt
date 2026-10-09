@@ -1,12 +1,15 @@
 package com.khsuiti.knowhow.presentation.feature.tutordetail
 
 import com.khsuiti.knowhow.responsesData.ReviewResponse
+import com.khsuiti.knowhow.responsesData.ScheduleResponse
 import com.khsuiti.knowhow.responsesData.ServiceResponse
 import com.khsuiti.knowhow.responsesData.TutorProfileWithUserResponse
 
 data class TutorDetailState(
 	val tutor: TutorProfileWithUserResponse? = null,
 	val service: ServiceResponse? = null,
+	val availableSchedules: List<ScheduleResponse> = emptyList(),
+	val selectedScheduleId: String? = null,
 	val availableDays: List<Pair<String, String>> = listOf(
 		"Mon" to "18", "Tue" to "19", "Wed" to "20", "Thu" to "21", "Fri" to "22"
 	),
