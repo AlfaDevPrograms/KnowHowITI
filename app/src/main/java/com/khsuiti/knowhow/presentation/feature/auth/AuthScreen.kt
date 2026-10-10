@@ -7,18 +7,19 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Description
 import androidx.compose.material.icons.rounded.Email
@@ -86,201 +87,177 @@ fun AuthScreen(
 	Scaffold(
 		containerColor = Color.Transparent
 	) { innerPadding ->
-		Column(
+		LazyColumn(
 			modifier = modifier
 				.fillMaxSize()
 				.padding(innerPadding)
-				.verticalScroll(rememberScrollState())
+				.navigationBarsPadding()
 				.padding(horizontal = 24.dp),
 			horizontalAlignment = Alignment.CenterHorizontally,
-			verticalArrangement = Arrangement.Center
+			verticalArrangement = Arrangement.spacedBy(16.dp),
+			contentPadding = PaddingValues(vertical = 32.dp)
 		) {
-			Spacer(modifier = Modifier.height(24.dp))
-
-			// App Logo
-			Image(
-				painter = painterResource(id = R.drawable.logo),
-				contentDescription = null,
-				modifier = Modifier
-					.size(96.dp)
-					.clip(RoundedCornerShape(20.dp)),
-				contentScale = ContentScale.Crop
-			)
-
-			Spacer(modifier = Modifier.height(16.dp))
-
-			Text(
-				text = stringResource(R.string.app_name),
-				style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold),
-				color = MaterialTheme.colorScheme.onBackground
-			)
-
-			Spacer(modifier = Modifier.height(24.dp))
-
-			// Auth Mode Segmented Selector (Войти / Зарегистрироваться)
-			Card(
-				shape = RoundedCornerShape(20.dp),
-				colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-				modifier = Modifier.fillMaxWidth()
-			) {
-				Row(
+			item {
+				// App Logo
+				Image(
+					painter = painterResource(id = R.drawable.logo),
+					contentDescription = null,
 					modifier = Modifier
-						.fillMaxWidth()
-						.padding(4.dp)
-				) {
-					// Button 1: Войти
-					Box(
-						modifier = Modifier
-							.weight(1f)
-							.height(44.dp)
-							.clip(RoundedCornerShape(16.dp))
-							.background(
-								if (state.isLoginMode) MaterialTheme.colorScheme.secondary else Color.Transparent
-							)
-							.clickable { viewModel.handleIntent(AuthIntent.ToggleAuthMode(true)) },
-						contentAlignment = Alignment.Center
-					) {
-						Text(
-							text = stringResource(R.string.login_button),
-							fontWeight = FontWeight.Bold,
-							color = if (state.isLoginMode) Color.White else MaterialTheme.colorScheme.onSurface
-						)
-					}
+						.size(96.dp)
+						.clip(RoundedCornerShape(20.dp)),
+					contentScale = ContentScale.Crop
+				)
+			}
 
-					// Button 2: Зарегистрироваться
-					Box(
+			item {
+				Text(
+					text = stringResource(R.string.app_name),
+					style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold),
+					color = MaterialTheme.colorScheme.onBackground
+				)
+			}
+
+			item {
+				// Auth Mode Segmented Selector (Войти / Зарегистрироваться)
+				Card(
+					shape = RoundedCornerShape(20.dp),
+					colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+					modifier = Modifier.fillMaxWidth()
+				) {
+					Row(
 						modifier = Modifier
-							.weight(1f)
-							.height(44.dp)
-							.clip(RoundedCornerShape(16.dp))
-							.background(
-								if (!state.isLoginMode) MaterialTheme.colorScheme.secondary else Color.Transparent
-							)
-							.clickable { viewModel.handleIntent(AuthIntent.ToggleAuthMode(false)) },
-						contentAlignment = Alignment.Center
+							.fillMaxWidth()
+							.padding(4.dp)
 					) {
-						Text(
-							text = stringResource(R.string.register_button),
-							fontWeight = FontWeight.Bold,
-							fontSize = 13.sp,
-							color = if (!state.isLoginMode) Color.White else MaterialTheme.colorScheme.onSurface
-						)
+						// Button 1: Войти
+						Box(
+							modifier = Modifier
+								.weight(1f)
+								.height(44.dp)
+								.clip(RoundedCornerShape(16.dp))
+								.background(
+									if (state.isLoginMode) MaterialTheme.colorScheme.secondary else Color.Transparent
+								)
+								.clickable { viewModel.handleIntent(AuthIntent.ToggleAuthMode(true)) },
+							contentAlignment = Alignment.Center
+						) {
+							Text(
+								text = stringResource(R.string.login_button),
+								fontWeight = FontWeight.Bold,
+								color = if (state.isLoginMode) Color.White else MaterialTheme.colorScheme.onSurface
+							)
+						}
+
+						// Button 2: Зарегистрироваться
+						Box(
+							modifier = Modifier
+								.weight(1f)
+								.height(44.dp)
+								.clip(RoundedCornerShape(16.dp))
+								.background(
+									if (!state.isLoginMode) MaterialTheme.colorScheme.secondary else Color.Transparent
+								)
+								.clickable { viewModel.handleIntent(AuthIntent.ToggleAuthMode(false)) },
+							contentAlignment = Alignment.Center
+						) {
+							Text(
+								text = stringResource(R.string.register_button),
+								fontWeight = FontWeight.Bold,
+								fontSize = 13.sp,
+								color = if (!state.isLoginMode) Color.White else MaterialTheme.colorScheme.onSurface
+							)
+						}
 					}
 				}
 			}
 
-			Spacer(modifier = Modifier.height(24.dp))
-
-			// Form Card
-			Card(
-				shape = RoundedCornerShape(24.dp),
-				colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-				elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-				modifier = Modifier.fillMaxWidth()
-			) {
-				Column(
-					modifier = Modifier.padding(20.dp)
+			item {
+				// Form Card
+				Card(
+					shape = RoundedCornerShape(24.dp),
+					colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+					elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+					modifier = Modifier.fillMaxWidth()
 				) {
-					Text(
-						text = if (state.isLoginMode)
-							stringResource(R.string.auth_title_login)
-						else
-							stringResource(R.string.auth_title_register),
-						style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-						color = MaterialTheme.colorScheme.onSurface
-					)
-
-					Spacer(modifier = Modifier.height(16.dp))
-
-					if (!state.isLoginMode) {
-						// Role selection (Student vs Tutor)
+					Column(
+						modifier = Modifier.padding(20.dp)
+					) {
 						Text(
-							text = "Тип аккаунта:",
-							style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+							text = if (state.isLoginMode)
+								stringResource(R.string.auth_title_login)
+							else
+								stringResource(R.string.auth_title_register),
+							style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
 							color = MaterialTheme.colorScheme.onSurface
 						)
-						Spacer(modifier = Modifier.height(8.dp))
-						Row(
-							modifier = Modifier.fillMaxWidth(),
-							horizontalArrangement = Arrangement.spacedBy(8.dp)
-						) {
-							// Student button
-							Box(
-								modifier = Modifier
-									.weight(1f)
-									.height(40.dp)
-									.clip(RoundedCornerShape(12.dp))
-									.background(if (!state.isTutor) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.surfaceVariant)
-									.clickable { viewModel.handleIntent(AuthIntent.ToggleAccountType(false)) },
-								contentAlignment = Alignment.Center
-							) {
-								Text(
-									text = "Ученик",
-									fontWeight = FontWeight.Bold,
-									color = if (!state.isTutor) Color.White else MaterialTheme.colorScheme.onSurface
-								)
-							}
-
-							// Tutor button
-							Box(
-								modifier = Modifier
-									.weight(1f)
-									.height(40.dp)
-									.clip(RoundedCornerShape(12.dp))
-									.background(if (state.isTutor) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.surfaceVariant)
-									.clickable { viewModel.handleIntent(AuthIntent.ToggleAccountType(true)) },
-								contentAlignment = Alignment.Center
-							) {
-								Text(
-									text = "Репетитор",
-									fontWeight = FontWeight.Bold,
-									color = if (state.isTutor) Color.White else MaterialTheme.colorScheme.onSurface
-								)
-							}
-						}
 
 						Spacer(modifier = Modifier.height(16.dp))
-					}
 
-					// Login or Email Field
-					OutlinedTextField(
-						value = state.loginOrEmail,
-						onValueChange = { viewModel.handleIntent(AuthIntent.LoginQueryChanged(it)) },
-						label = {
+						if (!state.isLoginMode) {
+							// Role selection (Student vs Tutor)
 							Text(
-								text = if (state.isLoginMode)
-									stringResource(R.string.login_or_email_label)
-								else
-									stringResource(R.string.login_label)
+								text = "Тип аккаунта:",
+								style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+								color = MaterialTheme.colorScheme.onSurface
 							)
-						},
-						leadingIcon = {
-							Icon(
-								imageVector = Icons.Rounded.Person,
-								contentDescription = null,
-								tint = MaterialTheme.colorScheme.secondary
-							)
-						},
-						singleLine = true,
-						shape = RoundedCornerShape(16.dp),
-						colors = OutlinedTextFieldDefaults.colors(
-							focusedBorderColor = MaterialTheme.colorScheme.secondary,
-							unfocusedBorderColor = Color.LightGray.copy(alpha = 0.5f)
-						),
-						modifier = Modifier.fillMaxWidth()
-					)
+							Spacer(modifier = Modifier.height(8.dp))
+							Row(
+								modifier = Modifier.fillMaxWidth(),
+								horizontalArrangement = Arrangement.spacedBy(8.dp)
+							) {
+								// Student button
+								Box(
+									modifier = Modifier
+										.weight(1f)
+										.height(40.dp)
+										.clip(RoundedCornerShape(12.dp))
+										.background(if (!state.isTutor) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.surfaceVariant)
+										.clickable { viewModel.handleIntent(AuthIntent.ToggleAccountType(false)) },
+									contentAlignment = Alignment.Center
+								) {
+									Text(
+										text = "Ученик",
+										fontWeight = FontWeight.Bold,
+										color = if (!state.isTutor) Color.White else MaterialTheme.colorScheme.onSurface
+									)
+								}
 
-					if (!state.isLoginMode) {
-						Spacer(modifier = Modifier.height(12.dp))
+								// Tutor button
+								Box(
+									modifier = Modifier
+										.weight(1f)
+										.height(40.dp)
+										.clip(RoundedCornerShape(12.dp))
+										.background(if (state.isTutor) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.surfaceVariant)
+										.clickable { viewModel.handleIntent(AuthIntent.ToggleAccountType(true)) },
+									contentAlignment = Alignment.Center
+								) {
+									Text(
+										text = "Репетитор",
+										fontWeight = FontWeight.Bold,
+										color = if (state.isTutor) Color.White else MaterialTheme.colorScheme.onSurface
+									)
+								}
+							}
 
-						// Email Field
+							Spacer(modifier = Modifier.height(16.dp))
+						}
+
+						// Login or Email Field
 						OutlinedTextField(
-							value = state.email,
-							onValueChange = { viewModel.handleIntent(AuthIntent.EmailChanged(it)) },
-							label = { Text(text = stringResource(R.string.email_label)) },
+							value = state.loginOrEmail,
+							onValueChange = { viewModel.handleIntent(AuthIntent.LoginQueryChanged(it)) },
+							label = {
+								Text(
+									text = if (state.isLoginMode)
+										stringResource(R.string.login_or_email_label)
+									else
+										stringResource(R.string.login_label)
+								)
+							},
 							leadingIcon = {
 								Icon(
-									imageVector = Icons.Rounded.Email,
+									imageVector = Icons.Rounded.Person,
 									contentDescription = null,
 									tint = MaterialTheme.colorScheme.secondary
 								)
@@ -294,51 +271,21 @@ fun AuthScreen(
 							modifier = Modifier.fillMaxWidth()
 						)
 
-						Spacer(modifier = Modifier.height(12.dp))
-
-						Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-							// First Name
-							OutlinedTextField(
-								value = state.firstName,
-								onValueChange = { viewModel.handleIntent(AuthIntent.FirstNameChanged(it)) },
-								label = { Text(text = stringResource(R.string.first_name_label)) },
-								singleLine = true,
-								shape = RoundedCornerShape(16.dp),
-								colors = OutlinedTextFieldDefaults.colors(
-									focusedBorderColor = MaterialTheme.colorScheme.secondary,
-									unfocusedBorderColor = Color.LightGray.copy(alpha = 0.5f)
-								),
-								modifier = Modifier.weight(1f)
-							)
-
-							// Last Name
-							OutlinedTextField(
-								value = state.lastName,
-								onValueChange = { viewModel.handleIntent(AuthIntent.LastNameChanged(it)) },
-								label = { Text(text = stringResource(R.string.last_name_label)) },
-								singleLine = true,
-								shape = RoundedCornerShape(16.dp),
-								colors = OutlinedTextFieldDefaults.colors(
-									focusedBorderColor = MaterialTheme.colorScheme.secondary,
-									unfocusedBorderColor = Color.LightGray.copy(alpha = 0.5f)
-								),
-								modifier = Modifier.weight(1f)
-							)
-						}
-
-						if (state.isTutor) {
+						if (!state.isLoginMode) {
 							Spacer(modifier = Modifier.height(12.dp))
+
+							// Email Field
 							OutlinedTextField(
-								value = state.experienceYears.toString(),
-								onValueChange = {
-									val exp = it.toIntOrNull() ?: 0
-									viewModel.handleIntent(AuthIntent.ExperienceChanged(exp))
-								},
-								label = { Text(text = "Опыт (лет)") },
+								value = state.email,
+								onValueChange = { viewModel.handleIntent(AuthIntent.EmailChanged(it)) },
+								label = { Text(text = stringResource(R.string.email_label)) },
 								leadingIcon = {
-									Icon(imageVector = Icons.Rounded.School, contentDescription = null, tint = MaterialTheme.colorScheme.secondary)
+									Icon(
+										imageVector = Icons.Rounded.Email,
+										contentDescription = null,
+										tint = MaterialTheme.colorScheme.secondary
+									)
 								},
-								keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
 								singleLine = true,
 								shape = RoundedCornerShape(16.dp),
 								colors = OutlinedTextFieldDefaults.colors(
@@ -349,127 +296,184 @@ fun AuthScreen(
 							)
 
 							Spacer(modifier = Modifier.height(12.dp))
-							OutlinedTextField(
-								value = state.bio,
-								onValueChange = { viewModel.handleIntent(AuthIntent.BioChanged(it)) },
-								label = { Text(text = "О себе / Биография") },
-								leadingIcon = {
-									Icon(imageVector = Icons.Rounded.Description, contentDescription = null, tint = MaterialTheme.colorScheme.secondary)
-								},
-								maxLines = 3,
-								shape = RoundedCornerShape(16.dp),
-								colors = OutlinedTextFieldDefaults.colors(
-									focusedBorderColor = MaterialTheme.colorScheme.secondary,
-									unfocusedBorderColor = Color.LightGray.copy(alpha = 0.5f)
-								),
-								modifier = Modifier.fillMaxWidth()
-							)
-						}
-					}
 
-					Spacer(modifier = Modifier.height(12.dp))
-
-					// Password Field
-					OutlinedTextField(
-						value = state.password,
-						onValueChange = { viewModel.handleIntent(AuthIntent.PasswordChanged(it)) },
-						label = { Text(text = stringResource(R.string.password_label)) },
-						leadingIcon = {
-							Icon(
-								imageVector = Icons.Rounded.Lock,
-								contentDescription = null,
-								tint = MaterialTheme.colorScheme.secondary
-							)
-						},
-						visualTransformation = PasswordVisualTransformation(),
-						singleLine = true,
-						keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-						keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
-						shape = RoundedCornerShape(16.dp),
-						colors = OutlinedTextFieldDefaults.colors(
-							focusedBorderColor = MaterialTheme.colorScheme.secondary,
-							unfocusedBorderColor = Color.LightGray.copy(alpha = 0.5f)
-						),
-						modifier = Modifier.fillMaxWidth()
-					)
-
-					if (state.isLoginMode) {
-						Spacer(modifier = Modifier.height(12.dp))
-						Row(
-							verticalAlignment = Alignment.CenterVertically,
-							modifier = Modifier.fillMaxWidth()
-						) {
-							Text(
-								text = stringResource(R.string.remember_me),
-								style = MaterialTheme.typography.bodyMedium,
-								color = MaterialTheme.colorScheme.onSurface,
-								modifier = Modifier.weight(1f)
-							)
-							Switch(
-								checked = state.rememberMe,
-								onCheckedChange = { viewModel.handleIntent(AuthIntent.ToggleRememberMe(it)) },
-								colors = SwitchDefaults.colors(
-									checkedThumbColor = Color.White,
-									checkedTrackColor = MaterialTheme.colorScheme.secondary
+							Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+								// First Name
+								OutlinedTextField(
+									value = state.firstName,
+									onValueChange = { viewModel.handleIntent(AuthIntent.FirstNameChanged(it)) },
+									label = { Text(text = stringResource(R.string.first_name_label)) },
+									singleLine = true,
+									shape = RoundedCornerShape(16.dp),
+									colors = OutlinedTextFieldDefaults.colors(
+										focusedBorderColor = MaterialTheme.colorScheme.secondary,
+										unfocusedBorderColor = Color.LightGray.copy(alpha = 0.5f)
+									),
+									modifier = Modifier.weight(1f)
 								)
-							)
+
+								// Last Name
+								OutlinedTextField(
+									value = state.lastName,
+									onValueChange = { viewModel.handleIntent(AuthIntent.LastNameChanged(it)) },
+									label = { Text(text = stringResource(R.string.last_name_label)) },
+									singleLine = true,
+									shape = RoundedCornerShape(16.dp),
+									colors = OutlinedTextFieldDefaults.colors(
+										focusedBorderColor = MaterialTheme.colorScheme.secondary,
+										unfocusedBorderColor = Color.LightGray.copy(alpha = 0.5f)
+									),
+									modifier = Modifier.weight(1f)
+								)
+							}
+
+							if (state.isTutor) {
+								Spacer(modifier = Modifier.height(12.dp))
+								OutlinedTextField(
+									value = state.experienceYears.toString(),
+									onValueChange = {
+										val exp = it.toIntOrNull() ?: 0
+										viewModel.handleIntent(AuthIntent.ExperienceChanged(exp))
+									},
+									label = { Text(text = "Опыт (лет)") },
+									leadingIcon = {
+										Icon(imageVector = Icons.Rounded.School, contentDescription = null, tint = MaterialTheme.colorScheme.secondary)
+									},
+									keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+									singleLine = true,
+									shape = RoundedCornerShape(16.dp),
+									colors = OutlinedTextFieldDefaults.colors(
+										focusedBorderColor = MaterialTheme.colorScheme.secondary,
+										unfocusedBorderColor = Color.LightGray.copy(alpha = 0.5f)
+									),
+									modifier = Modifier.fillMaxWidth()
+								)
+
+								Spacer(modifier = Modifier.height(12.dp))
+								OutlinedTextField(
+									value = state.bio,
+									onValueChange = { viewModel.handleIntent(AuthIntent.BioChanged(it)) },
+									label = { Text(text = "О себе / Биография") },
+									leadingIcon = {
+										Icon(imageVector = Icons.Rounded.Description, contentDescription = null, tint = MaterialTheme.colorScheme.secondary)
+									},
+									maxLines = 3,
+									shape = RoundedCornerShape(16.dp),
+									colors = OutlinedTextFieldDefaults.colors(
+										focusedBorderColor = MaterialTheme.colorScheme.secondary,
+										unfocusedBorderColor = Color.LightGray.copy(alpha = 0.5f)
+									),
+									modifier = Modifier.fillMaxWidth()
+								)
+							}
 						}
-					}
 
-					Spacer(modifier = Modifier.height(20.dp))
+						Spacer(modifier = Modifier.height(12.dp))
 
-					// Action Submit Button
-					Button(
-						onClick = {
-							focusManager.clearFocus()
-							viewModel.handleIntent(AuthIntent.SubmitAuth)
-						},
-						enabled = !state.isLoading,
-						shape = RoundedCornerShape(16.dp),
-						colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary),
-						modifier = Modifier
-							.fillMaxWidth()
-							.height(50.dp)
-					) {
-						if (state.isLoading) {
-							CircularProgressIndicator(
-								color = Color.White,
-								modifier = Modifier.size(24.dp)
-							)
-						} else {
-							Text(
-								text = if (state.isLoginMode)
-									stringResource(R.string.login_button)
-								else
-									stringResource(R.string.register_button),
-								fontWeight = FontWeight.Bold,
-								fontSize = 16.sp,
-								color = Color.White
-							)
+						// Password Field
+						OutlinedTextField(
+							value = state.password,
+							onValueChange = { viewModel.handleIntent(AuthIntent.PasswordChanged(it)) },
+							label = { Text(text = stringResource(R.string.password_label)) },
+							leadingIcon = {
+								Icon(
+									imageVector = Icons.Rounded.Lock,
+									contentDescription = null,
+									tint = MaterialTheme.colorScheme.secondary
+								)
+							},
+							visualTransformation = PasswordVisualTransformation(),
+							singleLine = true,
+							keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+							keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
+							shape = RoundedCornerShape(16.dp),
+							colors = OutlinedTextFieldDefaults.colors(
+								focusedBorderColor = MaterialTheme.colorScheme.secondary,
+								unfocusedBorderColor = Color.LightGray.copy(alpha = 0.5f)
+							),
+							modifier = Modifier.fillMaxWidth()
+						)
+
+						if (state.isLoginMode) {
+							Spacer(modifier = Modifier.height(12.dp))
+							Row(
+								verticalAlignment = Alignment.CenterVertically,
+								modifier = Modifier.fillMaxWidth()
+							) {
+								Text(
+									text = stringResource(R.string.remember_me),
+									style = MaterialTheme.typography.bodyMedium,
+									color = MaterialTheme.colorScheme.onSurface,
+									modifier = Modifier.weight(1f)
+								)
+								Switch(
+									checked = state.rememberMe,
+									onCheckedChange = { viewModel.handleIntent(AuthIntent.ToggleRememberMe(it)) },
+									colors = SwitchDefaults.colors(
+										checkedThumbColor = Color.White,
+										checkedTrackColor = MaterialTheme.colorScheme.secondary
+									)
+								)
+							}
+						}
+
+						Spacer(modifier = Modifier.height(20.dp))
+
+						// Action Submit Button
+						Button(
+							onClick = {
+								focusManager.clearFocus()
+								viewModel.handleIntent(AuthIntent.SubmitAuth)
+							},
+							enabled = !state.isLoading,
+							shape = RoundedCornerShape(16.dp),
+							colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary),
+							modifier = Modifier
+								.fillMaxWidth()
+								.height(50.dp)
+						) {
+							if (state.isLoading) {
+								CircularProgressIndicator(
+									color = Color.White,
+									modifier = Modifier.size(24.dp)
+								)
+							} else {
+								Text(
+									text = if (state.isLoginMode)
+										stringResource(R.string.login_button)
+									else
+										stringResource(R.string.register_button),
+									fontWeight = FontWeight.Bold,
+									fontSize = 16.sp,
+									color = Color.White
+								)
+							}
 						}
 					}
 				}
 			}
 
-			Spacer(modifier = Modifier.height(20.dp))
+			item {
+				// Toggle Prompt
+				Text(
+					text = if (state.isLoginMode)
+						stringResource(R.string.no_account_prompt)
+					else
+						stringResource(R.string.already_have_account),
+					style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+					color = MaterialTheme.colorScheme.secondary,
+					textAlign = TextAlign.Center,
+					modifier = Modifier
+						.clickable {
+							viewModel.handleIntent(AuthIntent.ToggleAuthMode(!state.isLoginMode))
+						}
+						.padding(8.dp)
+				)
+			}
 
-			// Toggle Prompt
-			Text(
-				text = if (state.isLoginMode)
-					stringResource(R.string.no_account_prompt)
-				else
-					stringResource(R.string.already_have_account),
-				style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-				color = MaterialTheme.colorScheme.secondary,
-				textAlign = TextAlign.Center,
-				modifier = Modifier
-					.clickable {
-						viewModel.handleIntent(AuthIntent.ToggleAuthMode(!state.isLoginMode))
-					}
-					.padding(8.dp)
-			)
-
-			Spacer(modifier = Modifier.height(24.dp))
+			item {
+				Spacer(modifier = Modifier.height(180.dp))
+			}
 		}
 	}
 }

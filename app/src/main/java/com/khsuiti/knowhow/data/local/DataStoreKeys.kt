@@ -8,7 +8,6 @@ object DataStoreKeys {
 	val BACKGROUND_IMAGE_URI = stringPreferencesKey("background_image_uri")
 	val DIMMING_LEVEL = stringPreferencesKey("dimming_level")
 	val BACKGROUND_ANIMATION_ENABLED = booleanPreferencesKey("background_animation_enabled")
-	val ONBOARDING_COMPLETED = booleanPreferencesKey("onboarding_completed")
 	val USER_CONSENT = booleanPreferencesKey("user_consent")
 	val VIEW = stringPreferencesKey("view")
 	val THEME_MODE_KEY = stringPreferencesKey("theme_mode")

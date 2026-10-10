@@ -8,6 +8,7 @@ import com.khsuiti.knowhow.responsesData.TutorProfileWithUserResponse
 data class TutorDetailState(
 	val tutor: TutorProfileWithUserResponse? = null,
 	val service: ServiceResponse? = null,
+	val services: List<ServiceResponse> = emptyList(),
 	val availableSchedules: List<ScheduleResponse> = emptyList(),
 	val selectedScheduleId: String? = null,
 	val availableDays: List<Pair<String, String>> = listOf(

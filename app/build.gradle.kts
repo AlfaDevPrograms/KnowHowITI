@@ -45,7 +45,6 @@ android {
 }
 
 dependencies {
-	implementation(libs.kmp.onboarding)
 	implementation(libs.accompanist.permissions)
 	implementation(libs.androidx.material3)
 	implementation(libs.coil.compose)

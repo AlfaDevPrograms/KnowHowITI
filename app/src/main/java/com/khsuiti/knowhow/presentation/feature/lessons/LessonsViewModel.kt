@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.util.UUID
 import javax.inject.Inject
 
 @HiltViewModel
@@ -41,7 +42,19 @@ class LessonsViewModel @Inject constructor() : ViewModel() {
 				}
 			} catch (e: Exception) {
 				Log.e("LessonsViewModel", "Error loading student bookings: ${e.message}", e)
-				_state.update { it.copy(isLoading = false) }
+				_state.update { it.copy(isLoading = false, error = e.message) }
+			}
+		}
+	}
+
+	fun deleteBooking(idBooking: UUID) {
+		viewModelScope.launch {
+			try {
+				BookingsApi.deleteBooking(idBooking)
+				loadBookings()
+			} catch (e: Exception) {
+				Log.e("LessonsViewModel", "Error deleting booking: ${e.message}", e)
+				_state.update { it.copy(error = e.message) }
 			}
 		}
 	}

@@ -54,6 +54,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.khsuiti.knowhow.R
+import com.khsuiti.knowhow.data.local.parseScheduleDateTime
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -78,6 +79,7 @@ fun TutorDetailScreen(
 	LaunchedEffect(state.bookingSuccess) {
 		if (state.bookingSuccess) {
 			Toast.makeText(context, bookingSuccessMessage, Toast.LENGTH_SHORT).show()
+			viewModel.handleIntent(TutorDetailIntent.CancelBooking)
 			onNavigateBack()
 		}
 	}
@@ -259,19 +261,41 @@ fun TutorDetailScreen(
 							horizontalArrangement = Arrangement.spacedBy(8.dp),
 							verticalArrangement = Arrangement.spacedBy(8.dp)
 						) {
-							val tags = service?.description?.split(",")?.map { it.trim() }
-								?: listOf("Mathematics", "Physics", "Calculus", "SAT Math")
-							tags.forEach { tag ->
-								Surface(
-									shape = RoundedCornerShape(12.dp),
-									color = MaterialTheme.colorScheme.surfaceVariant
-								) {
-									Text(
-										text = tag,
-										style = MaterialTheme.typography.labelMedium,
-										color = MaterialTheme.colorScheme.secondary,
-										modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
-									)
+							if (state.services.isNotEmpty()) {
+								state.services.forEach { svc ->
+									val isSelected = svc.idService == service?.idService
+									Surface(
+										shape = RoundedCornerShape(12.dp),
+										color = if (isSelected) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.surfaceVariant,
+										modifier = Modifier.clickable {
+											viewModel.handleIntent(TutorDetailIntent.SelectService(svc.idService))
+										}
+									) {
+										Text(
+											text = "${svc.subjectName} ($${svc.priceInDollars})",
+											style = MaterialTheme.typography.labelMedium.copy(
+												fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+											),
+											color = if (isSelected) Color.White else MaterialTheme.colorScheme.secondary,
+											modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
+										)
+									}
+								}
+							} else {
+								val tags = service?.description?.split(",")?.map { it.trim() }
+									?: listOf("Mathematics", "Physics", "Calculus", "SAT Math")
+								tags.forEach { tag ->
+									Surface(
+										shape = RoundedCornerShape(12.dp),
+										color = MaterialTheme.colorScheme.surfaceVariant
+									) {
+										Text(
+											text = tag,
+											style = MaterialTheme.typography.labelMedium,
+											color = MaterialTheme.colorScheme.secondary,
+											modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+										)
+									}
 								}
 							}
 						}

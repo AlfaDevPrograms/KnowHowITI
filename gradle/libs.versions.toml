@@ -21,10 +21,8 @@ ksp = "2.3.6"
 materialIconsExtended = "1.7.8"
 roomRuntime = "2.8.5"
 material3 = "1.4.0"
-kmpOnboarding = "1.0.3"
 
 [libraries]
-kmp-onboarding = { module = "io.github.yskuem:kmp-onboarding", version.ref = "kmpOnboarding" }
 accompanist-permissions = { module = "com.google.accompanist:accompanist-permissions", version.ref = "accompanistPermissions" }
 androidx-compose-foundation = { module = "androidx.compose.foundation:foundation", version.ref = "foundation" }
 androidx-compose-material-icons-extended = { module = "androidx.compose.material:material-icons-extended", version.ref = "materialIconsExtended" }

@@ -49,9 +49,6 @@ class HomeViewModel @Inject constructor(
 	private val _state = MutableStateFlow(HomeState())
 	val state: StateFlow<HomeState> = _state.asStateFlow()
 
-	private val _isOnboardingCompleted = MutableStateFlow(true)
-	val isOnboardingCompleted: StateFlow<Boolean> = _isOnboardingCompleted.asStateFlow()
-
 	private val _hasShownSplash = mutableStateOf(false)
 	val hasShownSplash: State<Boolean> = _hasShownSplash
 
@@ -70,7 +67,6 @@ class HomeViewModel @Inject constructor(
 		)
 
 	init {
-		checkOnboardingStatus()
 		loadTutorsData()
 	}
 
@@ -80,30 +76,6 @@ class HomeViewModel @Inject constructor(
 
 	fun markSplashAsShown() {
 		_hasShownSplash.value = true
-	}
-
-	fun checkOnboardingStatus() {
-		viewModelScope.launch {
-			try {
-				dataStore.data
-					.map { prefs -> prefs[DataStoreKeys.ONBOARDING_COMPLETED] ?: false }
-					.distinctUntilChanged()
-					.collect { completed -> _isOnboardingCompleted.value = completed }
-			} catch (e: Exception) {
-				_isOnboardingCompleted.value = false
-			}
-		}
-	}
-
-	suspend fun markOnboardingCompleted() {
-		try {
-			dataStore.edit { prefs ->
-				prefs[DataStoreKeys.ONBOARDING_COMPLETED] = true
-			}
-			_isOnboardingCompleted.value = true
-		} catch (e: Exception) {
-			Log.e("HomeViewModel", "Failed to save onboarding status: ${e.message}")
-		}
 	}
 
 	fun handleIntent(intent: HomeIntent) {

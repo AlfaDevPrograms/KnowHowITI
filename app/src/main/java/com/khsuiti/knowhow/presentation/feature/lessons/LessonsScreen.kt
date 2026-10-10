@@ -1,5 +1,6 @@
 package com.khsuiti.knowhow.presentation.feature.lessons
 
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
@@ -29,6 +30,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -38,15 +40,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.khsuiti.knowhow.R
+import com.khsuiti.knowhow.data.local.formatScheduleTime
 import com.khsuiti.knowhow.presentation.common.ui.theme.color1
 import com.khsuiti.knowhow.responsesData.BookingResponse
+import java.util.UUID
 
 @Composable
 fun LessonsScreen(
@@ -54,6 +58,13 @@ fun LessonsScreen(
 	modifier: Modifier = Modifier
 ) {
 	val state by viewModel.state.collectAsState()
+	val context = LocalContext.current
+
+	state.error?.let { err ->
+		LaunchedEffect(err) {
+			Toast.makeText(context, err, Toast.LENGTH_LONG).show()
+		}
+	}
 
 	val systemDark = isSystemInDarkTheme()
 	val grayTextColor = if (systemDark) Color.Gray else color1
@@ -120,7 +131,12 @@ fun LessonsScreen(
 					items(state.bookings) { booking ->
 						BookingCardTile(
 							booking = booking,
-							grayTextColor = grayTextColor
+							grayTextColor = grayTextColor,
+							onDeleteBooking = {
+								runCatching { UUID.fromString(booking.idBooking) }.getOrNull()?.let {
+									viewModel.deleteBooking(it)
+								}
+							}
 						)
 					}
 				}
@@ -132,7 +148,8 @@ fun LessonsScreen(
 @Composable
 fun BookingCardTile(
 	booking: BookingResponse,
-	grayTextColor: Color
+	grayTextColor: Color,
+	onDeleteBooking: () -> Unit
 ) {
 	val service = booking.service
 	val tutor = service.tutor
@@ -222,7 +239,7 @@ fun BookingCardTile(
 					)
 					Spacer(modifier = Modifier.width(6.dp))
 					Text(
-						text = schedule.startTime.ifBlank { booking.dateBooking },
+						text = formatScheduleTime(schedule.startTime.ifBlank { booking.dateBooking }),
 						style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
 						color = MaterialTheme.colorScheme.onSurface
 					)
@@ -233,6 +250,18 @@ fun BookingCardTile(
 					style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
 					color = MaterialTheme.colorScheme.secondary
 				)
+			}
+
+			Spacer(modifier = Modifier.height(12.dp))
+
+			Row(
+				modifier = Modifier.fillMaxWidth(),
+				horizontalArrangement = Arrangement.End,
+				verticalAlignment = Alignment.CenterVertically
+			) {
+				TextButton(onClick = onDeleteBooking) {
+					Text("Отменить бронь", color = Color(0xFFE53935))
+				}
 			}
 		}
 	}

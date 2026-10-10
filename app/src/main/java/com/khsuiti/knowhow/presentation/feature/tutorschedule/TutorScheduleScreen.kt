@@ -56,6 +56,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.khsuiti.knowhow.data.local.formatScheduleTime
 import com.khsuiti.knowhow.presentation.common.ui.theme.color1
 import com.khsuiti.knowhow.responsesData.BookingResponse
 import com.khsuiti.knowhow.responsesData.ScheduleResponse
@@ -63,13 +64,6 @@ import com.khsuiti.knowhow.responsesData.ServiceResponse
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.util.UUID
-
-fun formatScheduleTime(isoString: String): String {
-	return runCatching {
-		val dt = LocalDateTime.parse(isoString.removeSuffix("Z"))
-		dt.format(DateTimeFormatter.ofPattern("dd.MM.yyyy в HH:mm"))
-	}.getOrDefault(isoString)
-}
 
 @Composable
 fun TutorScheduleScreen(

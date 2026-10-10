@@ -14,6 +14,7 @@ import com.khsuiti.knowhow.data.local.ReviewsApi
 import com.khsuiti.knowhow.data.local.SchedulesApi
 import com.khsuiti.knowhow.data.local.ServicesApi
 import com.khsuiti.knowhow.data.local.UserProfilesApi
+import com.khsuiti.knowhow.data.local.parseScheduleDateTime
 import com.khsuiti.knowhow.responsesData.ScheduleResponse
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -22,19 +23,10 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.LocalDateTime
-import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import java.util.UUID
 import javax.inject.Inject
-
-fun parseScheduleDateTime(isoString: String): LocalDateTime? {
-	return runCatching {
-		LocalDateTime.parse(isoString)
-	}.recoverCatching {
-		OffsetDateTime.parse(isoString).toLocalDateTime()
-	}.getOrNull()
-}
 
 @HiltViewModel
 class TutorDetailViewModel @Inject constructor(
@@ -48,6 +40,7 @@ class TutorDetailViewModel @Inject constructor(
 		when (intent) {
 			is TutorDetailIntent.LoadTutorDetail -> loadTutorDetailData(intent.tutorId)
 			is TutorDetailIntent.LoadServiceDetail -> loadServiceDetailData(intent.serviceId)
+			is TutorDetailIntent.SelectService -> loadServiceSchedule(intent.serviceId)
 			is TutorDetailIntent.SelectDate -> {
 				val day = intent.date
 				val timeFormat = DateTimeFormatter.ofPattern("HH:mm")
@@ -101,7 +94,7 @@ class TutorDetailViewModel @Inject constructor(
 	}
 
 	private fun loadTutorDetailData(tutorId: String) {
-		_state.update { it.copy(isLoading = true, error = null) }
+		_state.update { it.copy(isLoading = true, error = null, bookingSuccess = false) }
 		viewModelScope.launch {
 			try {
 				val uuid = runCatching { UUID.fromString(tutorId) }.getOrNull()
@@ -112,14 +105,12 @@ class TutorDetailViewModel @Inject constructor(
 					val firstService = servicesPage.items.firstOrNull()
 
 					val freeSchedules = mutableListOf<ScheduleResponse>()
-					for (svc in servicesPage.items) {
-						val serviceUuid = runCatching { UUID.fromString(svc.idService) }.getOrNull()
-						if (serviceUuid != null) {
-							val schedules = runCatching {
-								SchedulesApi.getServiceSchedule(serviceUuid, startIndex = 0, size = 50).items.filter { !it.isBooked }
-							}.getOrDefault(emptyList())
-							freeSchedules.addAll(schedules)
-						}
+					val serviceUuid = firstService?.idService?.let { runCatching { UUID.fromString(it) }.getOrNull() }
+					if (serviceUuid != null) {
+						val schedules = runCatching {
+							SchedulesApi.getServiceSchedule(serviceUuid, startIndex = 0, size = 50).items.filter { !it.isBooked }
+						}.getOrDefault(emptyList())
+						freeSchedules.addAll(schedules)
 					}
 
 					val (days, defaultDay) = updateSchedulesAndDays(freeSchedules, "")
@@ -131,6 +122,7 @@ class TutorDetailViewModel @Inject constructor(
 						it.copy(
 							tutor = tutorDto,
 							service = firstService,
+							services = servicesPage.items,
 							availableSchedules = freeSchedules,
 							availableDays = days,
 							selectedDay = defaultDay,
@@ -173,13 +165,56 @@ class TutorDetailViewModel @Inject constructor(
 		}
 	}
 
-	private fun loadServiceDetailData(serviceId: String) {
+	private fun loadServiceSchedule(serviceId: String) {
+		val service = _state.value.services.find { it.idService == serviceId } ?: _state.value.service
+		if (service == null) {
+			loadServiceDetailData(serviceId)
+			return
+		}
 		_state.update { it.copy(isLoading = true, error = null) }
+		viewModelScope.launch {
+			try {
+				val serviceUuid = UUID.fromString(service.idService)
+				val schedulesPage = runCatching {
+					SchedulesApi.getServiceSchedule(serviceUuid, startIndex = 0, size = 50)
+				}.getOrNull()
+				val freeSchedules = schedulesPage?.items?.filter { !it.isBooked } ?: emptyList()
+
+				val (days, defaultDay) = updateSchedulesAndDays(freeSchedules, "")
+				val timeFormat = DateTimeFormatter.ofPattern("HH:mm")
+				val firstSchedule = freeSchedules.firstOrNull()
+				val defaultTime = firstSchedule?.let { parseScheduleDateTime(it.startTime)?.format(timeFormat) } ?: ""
+
+				_state.update {
+					it.copy(
+						service = service,
+						availableSchedules = freeSchedules,
+						availableDays = days,
+						selectedDay = defaultDay,
+						selectedScheduleId = firstSchedule?.idSchedule,
+						selectedTimeSlot = defaultTime,
+						isLoading = false
+					)
+				}
+			} catch (e: Exception) {
+				Log.e("TutorDetailViewModel", "Error loading service schedule: ${e.message}", e)
+				_state.update { it.copy(isLoading = false, error = e.message) }
+			}
+		}
+	}
+
+	private fun loadServiceDetailData(serviceId: String) {
+		_state.update { it.copy(isLoading = true, error = null, bookingSuccess = false) }
 		viewModelScope.launch {
 			try {
 				val serviceUuid = runCatching { UUID.fromString(serviceId) }.getOrNull()
 				if (serviceUuid != null) {
 					val service = ServicesApi.getService(serviceUuid)
+					val tutorUuid = runCatching { UUID.fromString(service.tutor.idTutorProfile) }.getOrNull()
+					val servicesPage = if (tutorUuid != null) {
+						runCatching { ServicesApi.getServices(tutorId = tutorUuid, startIndex = 0, size = 10).items }.getOrDefault(listOf(service))
+					} else listOf(service)
+
 					val schedulesPage = runCatching {
 						SchedulesApi.getServiceSchedule(serviceUuid, startIndex = 0, size = 50)
 					}.getOrNull()
@@ -190,7 +225,6 @@ class TutorDetailViewModel @Inject constructor(
 					val firstSchedule = freeSchedules.firstOrNull()
 					val defaultTime = firstSchedule?.let { parseScheduleDateTime(it.startTime)?.format(timeFormat) } ?: ""
 
-					val tutorUuid = runCatching { UUID.fromString(service.tutor.idTutorProfile) }.getOrNull()
 					val reviewsPage = if (tutorUuid != null) {
 						runCatching { ReviewsApi.getTutorReviews(tutorUuid, startIndex = 0, size = 10).items }.getOrDefault(emptyList())
 					} else emptyList()
@@ -199,6 +233,7 @@ class TutorDetailViewModel @Inject constructor(
 						it.copy(
 							service = service,
 							tutor = service.tutor,
+							services = servicesPage,
 							availableSchedules = freeSchedules,
 							availableDays = days,
 							selectedDay = defaultDay,

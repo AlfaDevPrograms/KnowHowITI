@@ -36,6 +36,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
@@ -68,11 +69,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
-import com.khsuiti.knowhow.MainApplication
 import com.khsuiti.knowhow.R
 import com.khsuiti.knowhow.data.local.ThemeMode
 import com.khsuiti.knowhow.presentation.common.MyText
-import com.khsuiti.knowhow.presentation.common.OnboardingScreen
 import com.khsuiti.knowhow.presentation.common.ui.theme.Typography
 import com.khsuiti.knowhow.presentation.common.ui.theme.color1
 import com.khsuiti.knowhow.responsesData.ServiceResponse
@@ -91,7 +90,6 @@ fun HomeScreen(
 	onNavigateToTutorDetail: (String) -> Unit = {}
 ) {
 	val state by viewModel.state.collectAsState()
-	val isOnboardingCompleted by viewModel.isOnboardingCompleted.collectAsState()
 	val context = LocalContext.current
 	val focusManager = LocalFocusManager.current
 	val scope = rememberCoroutineScope()
@@ -123,16 +121,27 @@ fun HomeScreen(
 		}
 	}
 
-	if (!isOnboardingCompleted) {
-		val application = context.applicationContext as MainApplication
-		OnboardingScreen(
-			context = context,
-			onFinished = {
-				scope.launch {
-					viewModel.markOnboardingCompleted()
-				}
+	if (state.isLoading && state.tutors.isEmpty()) {
+		Box(
+			modifier = Modifier.fillMaxSize(),
+			contentAlignment = Alignment.Center
+		) {
+			Column(horizontalAlignment = Alignment.CenterHorizontally) {
+				Image(
+					painter = painterResource(id = R.drawable.logo),
+					contentDescription = null,
+					modifier = Modifier.size(96.dp)
+				)
+				Spacer(modifier = Modifier.height(16.dp))
+				Text(
+					text = "KnowHow",
+					style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold),
+					color = MaterialTheme.colorScheme.onBackground
+				)
+				Spacer(modifier = Modifier.height(24.dp))
+				CircularProgressIndicator(color = MaterialTheme.colorScheme.secondary)
 			}
-		)
+		}
 	} else {
 		Box(modifier = Modifier.fillMaxSize()) {
 			Scaffold(
